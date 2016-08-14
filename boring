@@ -1,0 +1,12 @@
+^Makefile$
+^configure$
+^_tags$
+^myocamlbuild\.ml$
+^setup\.ml$
+\.mllib$
+\.mldylib$
+\.byte$
+^_build
+\.log$
+\.data$
+^\.merlin$

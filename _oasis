@@ -1,0 +1,23 @@
+OASISFormat:  0.4
+Name:         sharp
+Version:      1.0.0
+Synopsis:     A FRP-style front-end framework
+Authors:      Thomas Feron <thomas.feron@redspline.com>
+License:      BSD-3-clause
+Plugins:      DevFiles (0.4)
+
+Library sharp
+  Path:       src
+  BuildTools: ocamlbuild
+  Modules:    Sharp, Sharp_core, Sharp_event, Sharp_form
+
+  BuildDepends:
+    js_of_ocaml.ppx
+
+Executable "sharp-demo"
+  Path:       demo
+  BuildTools: ocamlbuild
+  MainIs:     main.ml
+
+  BuildDepends:
+    sharp
