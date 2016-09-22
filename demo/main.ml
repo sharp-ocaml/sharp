@@ -2,32 +2,70 @@ open Js
 
 open Sharp.Core.Behaviour
 open Sharp.Core.Network
+open Sharp.Core
 open Sharp.Event
 open Sharp.Form
+open Sharp.VDOM
 
-let turn_paragraph_blue () =
-  Opt.iter
-    (Dom_html.document##querySelector (Js.string "#paragraph"))
-    (fun p -> p##.style##.color := Js.string "blue")
+exception Element_not_found of string
+
+let get_element selector =
+  Opt.get (Dom_html.document##querySelector (Js.string selector))
+          (fun () -> raise (Element_not_found selector))
+
+let item_network callback i btn =
+  let open Network.Infix in
+  click btn >>= fun signal ->
+  let open Behaviour.Infix in
+  let timed_signal = (fun x y -> (x, y)) <$> time <*> signal in
+  react_ timed_signal
+         (fun (t, opt) -> match opt with
+                          | None -> ()
+                          | Some _ -> callback t i
+         )
+
+let network () =
+  let description_field =
+    Opt.get (Dom_html.CoerceTo.input (get_element "#description"))
+            (fun () -> assert false)
+  in
+  let add_button = get_element "#add_item" in
+  let data_div   = get_element "#data"     in
+
+  let open Network.Infix in
+  text_field description_field >>= fun description ->
+  click ~prevent_default:true add_button >>= fun add_click ->
+
+  unbound_event () >>= fun ((remove_command : string option Behaviour.t)
+                           , remove_callback) ->
+  let open Behaviour.Infix in
+  let (add_command : string option Behaviour.t) =
+    (fun x y -> match x with | None -> None | Some _ -> Some y)
+    <$> add_click <*> description
+  in
+  let commands = (fun x y -> (x, y)) <$> add_command <*> remove_command in
+
+  let step is (add_opt, remove_opt) =
+    let is' = match add_opt with
+      | None -> is
+      | Some item -> is @ [item]
+    in
+    match remove_opt with
+    | None -> is'
+    | Some item -> List.filter (fun x -> x != item) is'
+  in
+  let items = fold step [] commands in
+
+  vdom data_div items (fun is ->
+         let empty_ul = tag "ul" |> set_attribute "id" "items" in
+         List.fold_left (fun ul i ->
+             let btn = tag ~network:(item_network remove_callback i) "button"
+                       |> append_child (text "Remove")
+             in
+             let li = tag "li" |> append_child (text i) |> append_child btn in
+             ul |> append_child li
+           ) empty_ul is
+       )
 
 let () =
-  let btn_opt = Dom_html.document##querySelector (Js.string "#blue_button") in
-  let field_opt =
-    Js.Opt.bind (Dom_html.document##querySelector (Js.string "#field"))
-                Dom_html.CoerceTo.input
-  in
-
-  let network =
-    click <* btn_opt >>= fun c ->
-    with_opt ~default:"" input field_opt >>= fun value ->
-
-    let click_count = count c in
-    let both = lift2 click_count value ~f:(fun x y -> (x, y)) in
-
-    react both (fun (count, value) ->
-            if count >= 3
-            then turn_paragraph_blue ()
-            else print_endline value
-          )
-  in
-  let _ = start network in ()
+  let _ = start (network ()) in ()

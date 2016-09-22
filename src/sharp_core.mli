@@ -1,49 +1,74 @@
+open Sharp_category
+
 type time = float
 
-module Behaviour :
-  sig
-    type 'a t
-    val at : 'a t -> time -> 'a * 'a t
-    val time : time t
+module type Behaviour_base_S = sig
+  type 'a t
+  type 'a event_callback = time -> 'a -> unit
 
-    val lift0 : 'a -> 'a t
-    val lift1 : f:('a -> 'b) -> 'a t -> 'b t
-    val lift2 : f:('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
-    val lift3 : f:('a -> 'b -> 'c -> 'd) -> 'a t -> 'b t -> 'c t -> 'd t
+  val at : 'a t -> time -> 'a * 'a t
+  val time : time t
 
-    val const : 'a -> 'a t
-    val map : f:('a -> 'b) -> 'a t -> 'b t
+  val at : 'a t -> time -> 'a * 'a t
+  val time : time t
 
-    val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
-    val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+  val pure : 'a -> 'a t
+  val apply : ('a -> 'b) t -> 'a t -> 'b t
+  val join : 'a t t -> 'a t
 
-    val ( <* ) : 'a t -> 'b t -> 'a t
-    val ( *> ) : 'a t -> 'b t -> 'b t
+  val ( <$?> ) : ('a -> 'b) -> 'a option t -> 'b option t
+  val ( <*?> ) : ('a -> 'b) option t -> 'a option t -> 'b option t
+  val ( <|> ) : 'a option t -> 'a option t -> 'a option t
 
-    val event : unit -> 'a option t * (time -> 'a -> unit)
+  val event : unit -> 'a option t * (time -> 'a -> unit)
 
-    val on : init:'a -> f:('a -> 'b -> 'a) -> 'b option t -> 'a t
-    val last : init:'a -> 'a option t -> 'a t
-    val toggle : init:bool -> 'a option t -> bool t
-    val count : ?init:int -> 'a option t -> int t
-  end
+  val on : 'a option t -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
+  val last : 'a option t -> init:'a -> 'a t
+  val toggle : 'a option t -> init:bool -> bool t
+  val count : ?init:int -> 'a option t -> int t
+  val upon : ?init:'a -> 'b option t -> 'a t -> 'a t
+  val fold : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a t
+end
+
+module Behaviour : sig
+  module Base : Behaviour_base_S
+
+  include Behaviour_base_S
+  include Monad.NoInfix with type 'a t := 'a t
+
+  module Infix : Monad.S with type 'a t := 'a t
+end
 
 module Behavior = Behaviour
 
-module Network :
-  sig
-    type 'a t
-    val start : 'a t -> unit -> unit
+module type Network_base_S = sig
+  type 'a t
+  val start : 'a t -> unit -> unit
+  val add_funnel : ((time -> unit) -> unit -> unit) -> unit t
+  val add_sink : (time -> unit) -> unit t
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+  val pure : 'a -> 'a t
+  val apply : ('a -> 'b) t -> 'a t -> 'b t
+  val join : 'a t t -> 'a t
+  val react : 'a Behaviour.t -> init:'b -> f:('b -> 'a -> 'b) -> unit t
+  val react_ : 'a Behaviour.t -> f:('a -> 'b) -> unit t
+  val finally : (unit -> unit) -> unit t
+end
 
-    val add_funnel : ((time -> unit) -> (unit -> unit)) -> unit t
-    val add_sink : (time -> unit) -> unit t
+module type Network_extra_S = sig
+  type 'a t
+  val event : (('a -> unit) -> (unit -> unit)) -> 'a option Behaviour.t t
+  val unbound_event :
+    unit -> ('a option Behaviour.t * 'a Behaviour.event_callback) t
+end
 
-    val map : f:('a -> 'b) -> 'a t -> 'b t
+module Network : sig
+  module Base : Network_base_S
 
-    val return : 'a -> 'a t
-    val bind : 'a t -> ('a -> 'b t) -> 'b t
-    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-    val ( >> ) : 'a t -> 'b t -> 'b t
+  include Network_base_S
+  include Monad.NoInfix with type 'a t := 'a t
+  include Network_extra_S with type 'a t := 'a t
 
-    val react : 'a Behaviour.t -> f:('a -> unit) -> unit t
-  end
+  module Infix : Monad.S with type 'a t := 'a t
+end

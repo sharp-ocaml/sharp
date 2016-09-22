@@ -9,7 +9,7 @@ Plugins:      DevFiles (0.4)
 Library sharp
   Path:       src
   BuildTools: ocamlbuild
-  Modules:    Sharp, Sharp_core, Sharp_event, Sharp_form
+  Modules:    Sharp, Sharp_core, Sharp_event, Sharp_form, Sharp_ajax, Sharp_vdom
 
   BuildDepends:
     js_of_ocaml.ppx
