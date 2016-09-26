@@ -57,7 +57,7 @@ let network () =
   let items = fold step [] commands in
 
   vdom data_div items (fun is ->
-         tag "ul" |> set_attribute "id" "items"
+         tag "ul" |* ("id", "items")
          |+ List.map (fun i ->
              tag "li"
              |- text i

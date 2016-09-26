@@ -46,6 +46,7 @@ module Generic (E : Extra) = struct
   let rec ( |+ ) parent = function
     | [] -> parent
     | child :: children -> append_child child parent |+ children
+  let ( |* ) node (name, value) = node |> set_attribute name value
 end
 
 module Raw : sig

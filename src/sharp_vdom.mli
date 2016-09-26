@@ -23,6 +23,7 @@ val clear_attribute : string -> t -> t
 
 val ( |- ) : t -> t -> t
 val ( |+ ) : t -> t list -> t
+val ( |* ) : t -> string * string -> t
 
 val link : ?current:node Js.t -> element Js.t -> t -> Linked.t
 val unlink : Linked.t -> unit
