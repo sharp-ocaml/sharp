@@ -181,6 +181,7 @@ module type Network_base_S = sig
   val join : 'a t t -> 'a t
   val react : 'a Behaviour.t -> init:'b -> f:('b -> 'a -> 'b) -> unit t
   val react_ : 'a Behaviour.t -> f:('a -> 'b) -> unit t
+  val initially : (unit -> unit) -> unit t
   val finally : (unit -> unit) -> unit t
 end
 
@@ -192,10 +193,11 @@ module Network_base = struct
   type sink = S of (time -> unit)
 
   type 'a t =
-    { value     : 'a
-    ; funnels   : funnel list
-    ; sinks     : sink list
-    ; finaliser : unit -> unit
+    { value       : 'a
+    ; funnels     : funnel list
+    ; sinks       : sink list
+    ; initialiser : unit -> unit
+    ; finaliser   : unit -> unit
     }
 
   (* helper for start *)
@@ -210,14 +212,20 @@ module Network_base = struct
     | [] -> ()
     | S s :: sinks' -> s t; flush_sinks t sinks'
 
-  let start { funnels; sinks } =
+  let start { funnels; sinks; initialiser; finaliser } =
     let started = ref false in
     let signal t = flush_sinks t sinks in
     let proxy_signal t = if !started then signal t else () in
-    let disconnect = connect (fun () -> ()) proxy_signal funnels in
-    started := true; signal (Sys.time ()); disconnect
+    let disconnect = connect (fun () -> finaliser ()) proxy_signal funnels in
+    started := true; initialiser (); signal (Sys.time ()); disconnect
 
-  let empty = { value = (); funnels = []; sinks = []; finaliser = fun () -> () }
+  let empty =
+    { value       = ()
+    ; funnels     = []
+    ; sinks       = []
+    ; initialiser = (fun () -> ())
+    ; finaliser   = (fun () -> ())
+    }
 
   let add_funnel f = { empty with funnels = [F f] }
   let add_sink   s = { empty with sinks   = [S s] }
@@ -226,23 +234,25 @@ module Network_base = struct
 
   let pure x = { empty with value = x }
 
-  let apply { value = f; funnels; sinks; finaliser }
-            { value = x; funnels = funnels';
-              sinks = sinks'; finaliser = finaliser' } =
-    { value     = f x
-    ; funnels   = funnels @ funnels'
-    ; sinks     = sinks @ sinks'
-    ; finaliser = fun () -> finaliser' (finaliser ())
+  let apply { value = f; funnels; sinks; initialiser; finaliser }
+            { value = x; funnels = funnels'; sinks = sinks';
+              initialiser = initialiser'; finaliser = finaliser' } =
+    { value       = f x
+    ; funnels     = funnels @ funnels'
+    ; sinks       = sinks @ sinks'
+    ; initialiser = (fun () -> initialiser' (initialiser ()))
+    ; finaliser   = (fun () -> finaliser' (finaliser ()))
     }
 
-  let join { value; funnels; sinks; finaliser } =
-    let { value = value'; funnels = funnels';
-          sinks = sinks'; finaliser = finaliser' } = value
+  let join { value; funnels; sinks; initialiser; finaliser } =
+    let { value = value'; funnels = funnels'; sinks = sinks';
+          initialiser = initialiser'; finaliser = finaliser' } = value
     in
-    { value     = value'
-    ; funnels   = funnels @ funnels'
-    ; sinks     = sinks @ sinks'
-    ; finaliser = fun () -> finaliser' (finaliser ())
+    { value       = value'
+    ; funnels     = funnels @ funnels'
+    ; sinks       = sinks @ sinks'
+    ; initialiser = (fun () -> initialiser' (initialiser ()))
+    ; finaliser   = (fun () -> finaliser' (finaliser ()))
     }
 
   let react b ~init ~f =
@@ -258,7 +268,8 @@ module Network_base = struct
 
   let react_ b ~f = react ~init:() b ~f:(fun () x -> f x; ())
 
-  let finally f = { empty with finaliser = f }
+  let initially f = { empty with initialiser = f }
+  let finally   f = { empty with finaliser   = f }
 end
 
 module type Network_extra_S = sig

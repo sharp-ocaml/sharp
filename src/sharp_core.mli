@@ -53,6 +53,7 @@ module type Network_base_S = sig
   val join : 'a t t -> 'a t
   val react : 'a Behaviour.t -> init:'b -> f:('b -> 'a -> 'b) -> unit t
   val react_ : 'a Behaviour.t -> f:('a -> 'b) -> unit t
+  val initially : (unit -> unit) -> unit t
   val finally : (unit -> unit) -> unit t
 end
 
