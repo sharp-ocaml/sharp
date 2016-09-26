@@ -57,14 +57,13 @@ let network () =
   let items = fold step [] commands in
 
   vdom data_div items (fun is ->
-         let empty_ul = tag "ul" |> set_attribute "id" "items" in
-         List.fold_left (fun ul i ->
-             let btn = tag ~network:(item_network remove_callback i) "button"
-                       |> append_child (text "Remove")
-             in
-             let li = tag "li" |> append_child (text i) |> append_child btn in
-             ul |> append_child li
-           ) empty_ul is
+         tag "ul" |> set_attribute "id" "items"
+         |+ List.map (fun i ->
+             tag "li"
+             |- text i
+             |- (tag ~network:(item_network remove_callback i) "button"
+                 |- text "Remove")
+           ) is
        )
 
 let () =

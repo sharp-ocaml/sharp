@@ -41,6 +41,11 @@ module Generic (E : Extra) = struct
        name = name' && attrs = attrs'
     | Text (t, _), Text (t', _) -> t = t'
     | _, _ -> false
+
+  let ( |- ) parent child = parent |> append_child child
+  let rec ( |+ ) parent = function
+    | [] -> parent
+    | child :: children -> append_child child parent |+ children
 end
 
 module Raw : sig
@@ -64,7 +69,8 @@ let node ?network name children =
     | Some net -> fun node -> Network.start (net node)
   in
   Node (name, [], children, f)
-let tag ?network name = node ?network name []
+let element ?network name = node ?network name []
+let tag = element
 let text content = Text (content, Raw.empty)
 
 let rec link ?current parent vdom = match vdom with
