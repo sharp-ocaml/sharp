@@ -1,10 +1,13 @@
 OASISFormat:      0.4
 Name:             sharp
 Version:          1.0.0
-Synopsis:         A FRP-style front-end framework
+Synopsis:         An FRP-style front-end framework
 Authors:          Thomas Feron <thomas.feron@redspline.com>
 License:          BSD-3-clause
 Plugins:          DevFiles (0.4), META (0.4)
+
+PostBuildCommand:
+  js_of_ocaml main.byte -o demo/main.js
 
 Library sharp
   Path:           src
@@ -12,6 +15,7 @@ Library sharp
 
   Modules:
     Sharp,
+    Sharp_category,
     Sharp_core,
     Sharp_event,
     Sharp_form,

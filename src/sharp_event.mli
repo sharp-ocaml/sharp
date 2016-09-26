@@ -8,7 +8,7 @@ val make :
 
 val make_unit :
   ?prevent_default:bool
-  ->   #Dom_html.event Js.t Dom.Event.typ -> #Dom_html.eventTarget Js.t
+  -> #Dom_html.event Js.t Dom.Event.typ -> #Dom_html.eventTarget Js.t
   -> unit option Behaviour.t Network.t
 
 val with_opt :
