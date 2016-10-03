@@ -5,6 +5,7 @@ type time = float
 module type Behaviour_base_S = sig
   type 'a t
   type 'a event_callback = time -> 'a -> unit
+  type 'a event = 'a option t * 'a event_callback
 
   val at : 'a t -> time -> 'a * 'a t
   val time : time t
@@ -21,13 +22,16 @@ module type Behaviour_base_S = sig
   val ( <*?> ) : ('a -> 'b) option t -> 'a option t -> 'b option t
   val ( <|> ) : 'a option t -> 'a option t -> 'a option t
 
-  val event : unit -> 'a option t * (time -> 'a -> unit)
+  val event : unit -> 'a event
+  val to_behaviour : 'a event -> 'a option t
+  val to_behavior : 'a event -> 'a option t
+  val trigger : 'a event -> time -> 'a -> unit
 
-  val on : 'a option t -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
-  val last : 'a option t -> init:'a -> 'a t
-  val toggle : 'a option t -> init:bool -> bool t
-  val count : ?init:int -> 'a option t -> int t
-  val upon : ?init:'a -> 'b option t -> 'a t -> 'a t
+  val on : 'a event -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
+  val last : 'a event -> init:'a -> 'a t
+  val toggle : 'a event -> init:bool -> bool t
+  val count : ?init:int -> 'a event -> int t
+  val upon : ?init:'a -> 'b event -> 'a t -> 'a t
   val fold : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a t
 end
 
@@ -59,9 +63,8 @@ end
 
 module type Network_extra_S = sig
   type 'a t
-  val event : (('a -> unit) -> (unit -> unit)) -> 'a option Behaviour.t t
-  val unbound_event :
-    unit -> ('a option Behaviour.t * 'a Behaviour.event_callback) t
+  val event : (('a -> unit) -> (unit -> unit)) -> 'a Behaviour.event t
+  val unbound_event : unit -> 'a Behaviour.event t
 end
 
 module Network : sig

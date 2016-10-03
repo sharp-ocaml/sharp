@@ -20,7 +20,8 @@ Library sharp
     Sharp_event,
     Sharp_form,
     Sharp_ajax,
-    Sharp_vdom
+    Sharp_vdom,
+    Sharp_vdom_subnetwork
 
   BuildDepends:
     js_of_ocaml.ppx

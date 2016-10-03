@@ -13,17 +13,6 @@ let get_element selector =
   Opt.get (Dom_html.document##querySelector (Js.string selector))
           (fun () -> raise (Element_not_found selector))
 
-let item_network callback i btn =
-  let open Network.Infix in
-  click btn >>= fun signal ->
-  let open Behaviour.Infix in
-  let timed_signal = (fun x y -> (x, y)) <$> time <*> signal in
-  react_ timed_signal
-         (fun (t, opt) -> match opt with
-                          | None -> ()
-                          | Some _ -> callback t i
-         )
-
 let network () =
   let description_field =
     Opt.get (Dom_html.CoerceTo.input (get_element "#description"))
@@ -34,16 +23,16 @@ let network () =
 
   let open Network.Infix in
   text_field description_field >>= fun description ->
-  click ~prevent_default:true add_button >>= fun add_click ->
+  click ~prevent_default:true add_button >>= fun click_event ->
+  unbound_event () >>= fun remove_event ->
 
-  unbound_event () >>= fun ((remove_command : string option Behaviour.t)
-                           , remove_callback) ->
   let open Behaviour.Infix in
   let (add_command : string option Behaviour.t) =
     (fun x y -> match x with | None -> None | Some _ -> Some y)
-    <$> add_click <*> description
+    <$> to_behaviour click_event <*> description
   in
-  let commands = (fun x y -> (x, y)) <$> add_command <*> remove_command in
+  let commands = (fun x y -> (x, y))
+                 <$> add_command <*> to_behaviour remove_event in
 
   let step is (add_opt, remove_opt) =
     let is' = match add_opt with
@@ -61,7 +50,7 @@ let network () =
          |+ List.map (fun i ->
              tag "li"
              |- text i
-             |- (tag ~network:(item_network remove_callback i) "button"
+             |- (tag ~network:(Sub.click remove_event ~value:i) "button"
                  |- text "Remove")
            ) is
        )

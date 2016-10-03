@@ -1,6 +1,11 @@
 open Sharp_core
 
-val text_field : Dom_html.inputElement Js.t -> string Behaviour.t Network.t
+class type field = object
+  inherit Dom_html.element
+  method value : Js.js_string Js.t Js.prop
+end
+
+val text_field : #field Js.t -> string Behaviour.t Network.t
 
 val with_dom_error :
   ((#Dom_html.element as 'a) Js.t -> 'b Behaviour.t Network.t)

@@ -4,6 +4,11 @@ open Sharp_event
 open Behaviour
 open Network
 
+class type field = object
+  inherit Dom_html.element
+  method value : Js.js_string Js.t Js.prop
+end
+
 let get_value el = Js.to_string el##.value
 
 let text_field el =

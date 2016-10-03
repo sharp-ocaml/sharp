@@ -38,6 +38,7 @@ end
 module type Behaviour_base_S = sig
   type 'a t
   type 'a event_callback = time -> 'a -> unit
+  type 'a event = 'a option t * 'a event_callback
 
   val at : 'a t -> time -> 'a * 'a t
   val time : time t
@@ -54,19 +55,23 @@ module type Behaviour_base_S = sig
   val ( <*?> ) : ('a -> 'b) option t -> 'a option t -> 'b option t
   val ( <|> ) : 'a option t -> 'a option t -> 'a option t
 
-  val event : unit -> 'a option t * (time -> 'a -> unit)
+  val event : unit -> 'a event
+  val to_behaviour : 'a event -> 'a option t
+  val to_behavior : 'a event -> 'a option t
+  val trigger : 'a event -> time -> 'a -> unit
 
-  val on : 'a option t -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
-  val last : 'a option t -> init:'a -> 'a t
-  val toggle : 'a option t -> init:bool -> bool t
-  val count : ?init:int -> 'a option t -> int t
-  val upon : ?init:'a -> 'b option t -> 'a t -> 'a t
+  val on : 'a event -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
+  val last : 'a event -> init:'a -> 'a t
+  val toggle : 'a event -> init:bool -> bool t
+  val count : ?init:int -> 'a event -> int t
+  val upon : ?init:'a -> 'b event -> 'a t -> 'a t
   val fold : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a t
 end
 
-module Behaviour_base = struct
+module Behaviour_base : Behaviour_base_S = struct
   type 'a t = B of (time -> 'a * 'a t)
   type 'a event_callback = time -> 'a -> unit
+  type 'a event = 'a option t * 'a event_callback
 
   let at (B f) t = f t
 
@@ -128,29 +133,33 @@ module Behaviour_base = struct
     let add t x = E.add !tip t x
     in (b, add)
 
-  let rec on (B fa) ~init ~f =
+  let to_behaviour (b, _) = b
+  let to_behavior = to_behaviour
+  let trigger (_, c) = c
+
+  let rec on (B fa, callback) ~init ~f =
     let f' t =
       match fa t with
-      | (None,   b) -> (init, on ~init ~f b)
+      | (None,   b) -> (init, on ~init ~f (b, callback))
       | (Some a, b) ->
-         let init' = f init a in (init',  on ~init:init' ~f b)
+         let init' = f init a in (init',  on ~init:init' ~f (b, callback))
     in B f'
 
-  let last   b ~init     = on b ~init ~f:(fun _ x -> x)
-  let toggle b ~init     = on b ~init ~f:(fun i _ -> not i)
+  let last   e ~init   = on e ~init ~f:(fun _ x -> x)
+  let toggle e ~init   = on e ~init ~f:(fun i _ -> not i)
   let count  ?(init=0) = on ~init ~f:(fun i _ -> i + 1)
 
-  let rec upon ?init (B fa) (B fb) =
+  let rec upon ?init (B fa, callback) (B fb) =
     let f t =
       let (a, ba) = fa t in
       let (b, bb) = fb t in
       match a with
-      | Some _ -> (b, upon ~init:b ba bb)
+      | Some _ -> (b, upon ~init:b (ba, callback) bb)
       | None   ->
          let value = match init with
            | Some x -> x
            | None   -> b
-         in (value, upon ~init:value ba bb)
+         in (value, upon ~init:value (ba, callback) bb)
     in B f
 
   let rec fold f init (B fa) =
@@ -185,7 +194,7 @@ module type Network_base_S = sig
   val finally : (unit -> unit) -> unit t
 end
 
-module Network_base = struct
+module Network_base : Network_base_S = struct
   (* Receive a function to signal a new event and return a function to
    * disconnect the funnel *)
   type funnel = F of ((time -> unit) -> (unit -> unit))
@@ -274,9 +283,8 @@ end
 
 module type Network_extra_S = sig
   type 'a t
-  val event : (('a -> unit) -> (unit -> unit)) -> 'a option Behaviour.t t
-  val unbound_event :
-    unit -> ('a option Behaviour.t * 'a Behaviour.event_callback) t
+  val event : (('a -> unit) -> (unit -> unit)) -> 'a Behaviour.event t
+  val unbound_event : unit -> 'a Behaviour.event t
 end
 
 module Network_extra (M : sig
@@ -292,7 +300,7 @@ module Network_extra (M : sig
         add t x; signal t
       in connect add'
     in
-    M.bind (M.add_funnel connect') (fun _ -> M.pure b)
+    M.bind (M.add_funnel connect') (fun _ -> M.pure (b, add))
 
   let unbound_event () =
     let (b, add) = Behaviour.event () in
