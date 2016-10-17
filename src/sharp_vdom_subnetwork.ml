@@ -18,7 +18,11 @@ let input event get_value node =
         )
 
 let text_field event node =
+  let open Network.Infix in
   input event (fun _ -> Js.to_string (node##.value)) node
+  >> initially (fun _ ->
+         let _ = trigger event (Js.to_string (node##.value)) in ()
+       )
 
 let submit ?prevent_default event node =
   let open Network.Infix in
