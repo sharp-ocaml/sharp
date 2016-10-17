@@ -14,8 +14,7 @@ let plug_lwt event value_lwt =
   let open Lwt in
   let _ =
     value_lwt >>= fun value ->
-    let t = Sys.time () in
-    let _ = Behaviour.trigger event t value in
+    let _ = Behaviour.trigger event value in
     return ()
   in ()
 
@@ -25,12 +24,11 @@ let plug_helper ?failure_event success_event frame_lwt =
   let open Lwt in
   let _ =
     frame_lwt >>= fun ({ code; content } as frame) ->
-    let t = Sys.time () in
     let _ = if code >= 200 && code < 300
-            then Behaviour.trigger success_event t content
+            then Behaviour.trigger success_event content
             else match failure_event with
                  | None -> ()
-                 | Some event -> Behaviour.trigger event t frame
+                 | Some event -> Behaviour.trigger event frame
     in return ()
   in ()
 

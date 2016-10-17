@@ -102,7 +102,7 @@ module Monad = struct
     include Applicative.NoInfix with type 'a t := 'a t
 
     val return : 'a -> 'a t
-    val bind : 'a t -> ('a -> 'b t) -> 'b t
+    val bind : 'a t -> f:('a -> 'b t) -> 'b t
     val mapM : ('a -> 'b t) -> 'a list -> 'b list t
   end
 
@@ -119,7 +119,7 @@ module Monad = struct
     include Applicative.MakeNoInfix(B)
 
     let return = pure
-    let bind mx f = join (map ~f mx)
+    let bind mx ~f = join (map ~f mx)
     let mapM f xs = sequence (List.map f xs)
   end
 
@@ -127,7 +127,7 @@ module Monad = struct
     include MakeNoInfix(B)
     include Applicative.Make(B)
 
-    let ( >>= ) = bind
+    let ( >>= ) mx f = bind mx ~f
     let ( >> ) fx fy = fx >>= fun _ -> fy
   end
 end

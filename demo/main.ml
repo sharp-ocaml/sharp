@@ -50,7 +50,7 @@ let network () =
          |+ List.map (fun i ->
              tag "li"
              |- text i
-             |- (tag ~network:(Sub.click remove_event ~value:i) "button"
+             |- (tag ~network:(Sub.click remove_event (fun _ -> i)) "button"
                  |- text "Remove")
            ) is
        )

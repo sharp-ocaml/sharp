@@ -13,8 +13,8 @@ let get_value el = Js.to_string el##.value
 
 let text_field el =
   let open Network.Infix in
-  input get_value el >>= fun b ->
-  return (last ~init:(get_value el) b)
+  input get_value el >>= fun ev ->
+  return (last ~init:(get_value el) (to_behaviour ev))
 
 class type validity =
   object
@@ -34,10 +34,10 @@ let get_dom_error el =
 let with_dom_error f el =
   let open Network.Infix in
   f el >>= fun bvalue ->
-  input get_dom_error el >>= fun berror ->
+  input get_dom_error el >>= fun error_event ->
   let choose value = function
     | Some error -> Error error
     | None       -> Ok value
   in
   return (let open Behaviour.Infix in
-          choose <$> bvalue <*> last ~init:None berror)
+          choose <$> bvalue <*> last ~init:None (to_behaviour error_event))

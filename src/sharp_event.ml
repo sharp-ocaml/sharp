@@ -1,6 +1,6 @@
 open Sharp_core
 
-let make ?(prevent_default=false) event get_value el =
+let make ?(prevent_default=true) event get_value el =
   let f add =
     let callback _ _ = add (get_value el); not prevent_default in
     let listener = Dom_events.listen el event callback in
@@ -16,7 +16,7 @@ let with_opt ?(descr="unknown") ?default f el_opt =
               (fun () ->
                 print_string "with_opt: Couldn't bind to an element: ";
                 print_endline descr;
-                Network.return (Behaviour.return default, fun _ _ -> ())
+                Network.return (Behaviour.return default, fun _ -> Sys.time ())
               ) f
 
 let ( <% ) f el_opt = with_opt f el_opt

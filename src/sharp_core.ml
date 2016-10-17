@@ -9,12 +9,12 @@ module Event = struct
 
   let create () = Stop (ref None)
 
-  (* TODO: If an element with the same time already exists, bump the time *)
   let rec add es t x = match es with
-    | Cons (_, _, es') -> add es' t x
+    | Cons (t', _, es') when t != t' -> add es' t x
+    | Cons (t', _, es') -> add es' (t +. epsilon_float) x
     | Stop r ->
        match !r with
-       | None -> r := Some (Cons (t, x, (create ())))
+       | None -> r := Some (Cons (t, x, (create ()))); t
        | Some es' -> add es' t x
 
   let rec at es t = match es with
@@ -37,11 +37,8 @@ end
 
 module type Behaviour_base_S = sig
   type 'a t
-  type 'a event_callback = time -> 'a -> unit
+  type 'a event_callback = 'a -> time
   type 'a event = 'a option t * 'a event_callback
-
-  val at : 'a t -> time -> 'a * 'a t
-  val time : time t
 
   val at : 'a t -> time -> 'a * 'a t
   val time : time t
@@ -58,19 +55,20 @@ module type Behaviour_base_S = sig
   val event : unit -> 'a event
   val to_behaviour : 'a event -> 'a option t
   val to_behavior : 'a event -> 'a option t
-  val trigger : 'a event -> time -> 'a -> unit
+  val trigger : 'a event -> 'a -> unit
 
-  val on : 'a event -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
-  val last : 'a event -> init:'a -> 'a t
-  val toggle : 'a event -> init:bool -> bool t
-  val count : ?init:int -> 'a event -> int t
-  val upon : ?init:'a -> 'b event -> 'a t -> 'a t
+  val on : 'a option t -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
+  val last : 'a option t -> init:'a -> 'a t
+  val toggle : 'a option t -> init:bool -> bool t
+  val count : ?init:int -> 'a option t -> int t
+  val upon : ?init:'a -> 'b option t -> 'a t -> 'a t
+
   val fold : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a t
 end
 
-module Behaviour_base : Behaviour_base_S = struct
+module Behaviour_base = struct
   type 'a t = B of (time -> 'a * 'a t)
-  type 'a event_callback = time -> 'a -> unit
+  type 'a event_callback = 'a -> time
   type 'a event = 'a option t * 'a event_callback
 
   let at (B f) t = f t
@@ -130,36 +128,36 @@ module Behaviour_base : Behaviour_base_S = struct
         tip := E.after e t; (x, b)
       in B f
     in
-    let add t x = E.add !tip t x
-    in (b, add)
+    let add x = E.add !tip (Sys.time ()) x in
+    (b, add)
 
   let to_behaviour (b, _) = b
   let to_behavior = to_behaviour
-  let trigger (_, c) = c
+  let trigger (_, c) x = let _ = c x in ()
 
-  let rec on (B fa, callback) ~init ~f =
+  let rec on (B fa) ~init ~f =
     let f' t =
       match fa t with
-      | (None,   b) -> (init, on ~init ~f (b, callback))
+      | (None,   b) -> (init, on ~init ~f b)
       | (Some a, b) ->
-         let init' = f init a in (init',  on ~init:init' ~f (b, callback))
+         let init' = f init a in (init',  on ~init:init' ~f b)
     in B f'
 
-  let last   e ~init   = on e ~init ~f:(fun _ x -> x)
-  let toggle e ~init   = on e ~init ~f:(fun i _ -> not i)
+  let last   b ~init   = on b ~init ~f:(fun _ x -> x)
+  let toggle b ~init   = on b ~init ~f:(fun i _ -> not i)
   let count  ?(init=0) = on ~init ~f:(fun i _ -> i + 1)
 
-  let rec upon ?init (B fa, callback) (B fb) =
+  let rec upon ?init (B fa) (B fb) =
     let f t =
       let (a, ba) = fa t in
       let (b, bb) = fb t in
       match a with
-      | Some _ -> (b, upon ~init:b (ba, callback) bb)
+      | Some _ -> (b, upon ~init:b ba bb)
       | None   ->
          let value = match init with
            | Some x -> x
            | None   -> b
-         in (value, upon ~init:value (ba, callback) bb)
+         in (value, upon ~init:value ba bb)
     in B f
 
   let rec fold f init (B fa) =
@@ -184,12 +182,17 @@ module type Network_base_S = sig
   val start : 'a t -> unit -> unit
   val add_funnel : ((time -> unit) -> unit -> unit) -> unit t
   val add_sink : (time -> unit) -> unit t
+
   val map : 'a t -> f:('a -> 'b) -> 'b t
   val pure : 'a -> 'a t
   val apply : ('a -> 'b) t -> 'a t -> 'b t
   val join : 'a t t -> 'a t
-  val react : 'a Behaviour.t -> init:'b -> f:('b -> 'a -> 'b) -> unit t
-  val react_ : 'a Behaviour.t -> f:('a -> 'b) -> unit t
+
+  val perform_state : 'a Behaviour.t -> init:'b -> f:('b -> 'a -> 'b) -> unit t
+  val perform : 'a Behaviour.t -> f:('a -> unit) -> unit t
+  val react :
+    'a Behaviour.event -> 'b Behaviour.t -> f:('a -> 'b -> unit) -> unit t
+
   val initially : (unit -> unit) -> unit t
   val finally : (unit -> unit) -> unit t
 end
@@ -264,7 +267,7 @@ module Network_base : Network_base_S = struct
     ; finaliser   = (fun () -> finaliser' (finaliser ()))
     }
 
-  let react b ~init ~f =
+  let perform_state b ~init ~f =
     let bref     = ref b    in
     let stateref = ref init in
     let s t =
@@ -275,7 +278,14 @@ module Network_base : Network_base_S = struct
       stateref := state'
     in add_sink s
 
-  let react_ b ~f = react ~init:() b ~f:(fun () x -> f x; ())
+  let perform b ~f = perform_state ~init:() b ~f:(fun () x -> f x; ())
+
+  let react e b ~f =
+    perform (Behaviour.apply (Behaviour.map ~f:(fun x y -> (x, y)) b)
+                             (Behaviour.to_behaviour e))
+            (fun (bval, eval_opt) -> match eval_opt with
+                                 | None -> ()
+                                 | Some eval -> f eval bval)
 
   let initially f = { empty with initialiser = f }
   let finally   f = { empty with finaliser   = f }
@@ -296,8 +306,7 @@ module Network_extra (M : sig
     let (b, add) = Behaviour.event () in
     let connect' signal =
       let add' x =
-        let t = Sys.time () in
-        add t x; signal t
+        let t = add x in signal t
       in connect add'
     in
     M.bind (M.add_funnel connect') (fun _ -> M.pure (b, add))
@@ -309,8 +318,9 @@ module Network_extra (M : sig
       signalref := signal;
       fun () -> signalref := fun _ -> ()
     in
-    let add' t x = add t x; (!signalref) t in
-    M.bind (M.add_funnel connect) (fun _ -> M.pure (b, add'))
+    let add' x =
+      let t = add x in (!signalref) t; t
+    in M.bind (M.add_funnel connect) (fun _ -> M.pure (b, add'))
 end
 
 module Network = struct

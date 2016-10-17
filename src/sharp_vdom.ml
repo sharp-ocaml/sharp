@@ -193,5 +193,376 @@ let vdom parent b f =
       | Some vdom -> diff_and_patch parent vdom vdom'
     in Some linked
   in
-  react b ~init:None ~f:g >>
+  perform_state b ~init:None ~f:g >>
   finally (fun () -> (!finaliser_ref) ())
+
+(* Helpers for specific elements *)
+module Element = struct
+  let a network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.a node)
+                          (fun () -> assert false) network
+            ) "a"
+
+  let area network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.area node)
+                          (fun () -> assert false) network
+            ) "area"
+
+  let base network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.base node)
+                          (fun () -> assert false) network
+            ) "base"
+
+  let blockquote network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.blockquote node)
+                          (fun () -> assert false) network
+            ) "blockquote"
+
+  let body network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.body node)
+                          (fun () -> assert false) network
+            ) "body"
+
+  let br network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.br node)
+                          (fun () -> assert false) network
+            ) "br"
+
+  let button network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.button node)
+                          (fun () -> assert false) network
+            ) "button"
+
+  let canvas network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.canvas node)
+                          (fun () -> assert false) network
+            ) "canvas"
+
+  let caption network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.caption node)
+                          (fun () -> assert false) network
+            ) "caption"
+
+  let col network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.col node)
+                          (fun () -> assert false) network
+            ) "col"
+
+  let colgroup network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.colgroup node)
+                          (fun () -> assert false) network
+            ) "colgroup"
+
+  let del network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.del node)
+                          (fun () -> assert false) network
+            ) "del"
+
+  let div network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.div node)
+                          (fun () -> assert false) network
+            ) "div"
+
+  let dl network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.dl node)
+                          (fun () -> assert false) network
+            ) "dl"
+
+  let fieldset network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.fieldset node)
+                          (fun () -> assert false) network
+            ) "fieldset"
+
+  let embed network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.embed node)
+                          (fun () -> assert false) network
+            ) "embed"
+
+  let form network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.form node)
+                          (fun () -> assert false) network
+            ) "form"
+
+  let frameset network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.frameset node)
+                          (fun () -> assert false) network
+            ) "frameset"
+
+  let frame network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.frame node)
+                          (fun () -> assert false) network
+            ) "frame"
+
+  let h1 network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.h1 node)
+                          (fun () -> assert false) network
+            ) "h1"
+
+  let h2 network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.h2 node)
+                          (fun () -> assert false) network
+            ) "h2"
+
+  let h3 network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.h3 node)
+                          (fun () -> assert false) network
+            ) "h3"
+
+  let h4 network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.h4 node)
+                          (fun () -> assert false) network
+            ) "h4"
+
+  let h5 network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.h5 node)
+                          (fun () -> assert false) network
+            ) "h5"
+
+  let h6 network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.h6 node)
+                          (fun () -> assert false) network
+            ) "h6"
+
+  let head network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.head node)
+                          (fun () -> assert false) network
+            ) "head"
+
+  let hr network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.hr node)
+                          (fun () -> assert false) network
+            ) "hr"
+
+  let html network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.html node)
+                          (fun () -> assert false) network
+            ) "html"
+
+  let iframe network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.iframe node)
+                          (fun () -> assert false) network
+            ) "iframe"
+
+  let img network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.img node)
+                          (fun () -> assert false) network
+            ) "img"
+
+  let input network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.input node)
+                          (fun () -> assert false) network
+            ) "input"
+
+  let ins network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.ins node)
+                          (fun () -> assert false) network
+            ) "ins"
+
+  let label network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.label node)
+                          (fun () -> assert false) network
+            ) "label"
+
+  let legend network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.legend node)
+                          (fun () -> assert false) network
+            ) "legend"
+
+  let li network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.li node)
+                          (fun () -> assert false) network
+            ) "li"
+
+  let link network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.link node)
+                          (fun () -> assert false) network
+            ) "link"
+
+  let map network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.map node)
+                          (fun () -> assert false) network
+            ) "map"
+
+  let meta network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.meta node)
+                          (fun () -> assert false) network
+            ) "meta"
+
+  let _object network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo._object node)
+                          (fun () -> assert false) network
+            ) "object"
+
+  let ol network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.ol node)
+                          (fun () -> assert false) network
+            ) "ol"
+
+  let optgroup network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.optgroup node)
+                          (fun () -> assert false) network
+            ) "optgroup"
+
+  let option network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.option node)
+                          (fun () -> assert false) network
+            ) "option"
+
+  let p network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.p node)
+                          (fun () -> assert false) network
+            ) "p"
+
+  let param network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.param node)
+                          (fun () -> assert false) network
+            ) "param"
+
+  let pre network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.pre node)
+                          (fun () -> assert false) network
+            ) "pre"
+
+  let q network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.q node)
+                          (fun () -> assert false) network
+            ) "q"
+
+  let script network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.script node)
+                          (fun () -> assert false) network
+            ) "script"
+
+  let select network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.select node)
+                          (fun () -> assert false) network
+            ) "select"
+
+  let style network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.style node)
+                          (fun () -> assert false) network
+            ) "style"
+
+  let table network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.table node)
+                          (fun () -> assert false) network
+            ) "table"
+
+  let tbody network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.tbody node)
+                          (fun () -> assert false) network
+            ) "tbody"
+
+  let td network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.td node)
+                          (fun () -> assert false) network
+            ) "td"
+
+  let textarea network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.textarea node)
+                          (fun () -> assert false) network
+            ) "textarea"
+
+  let tfoot network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.tfoot node)
+                          (fun () -> assert false) network
+            ) "tfoot"
+
+  let th network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.th node)
+                          (fun () -> assert false) network
+            ) "th"
+
+  let thead network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.thead node)
+                          (fun () -> assert false) network
+            ) "thead"
+
+  let title network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.title node)
+                          (fun () -> assert false) network
+            ) "title"
+
+  let tr network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.tr node)
+                          (fun () -> assert false) network
+            ) "tr"
+
+  let ul network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.ul node)
+                          (fun () -> assert false) network
+            ) "ul"
+
+  let audio network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.audio node)
+                          (fun () -> assert false) network
+            ) "audio"
+
+  let video network =
+    element ~network:(fun node ->
+              Js.Opt.case (Dom_html.CoerceTo.video node)
+                          (fun () -> assert false) network
+            ) "video"
+end
+
+module E = Element
