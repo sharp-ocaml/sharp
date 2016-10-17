@@ -14,7 +14,7 @@ let get_value el = Js.to_string el##.value
 let text_field el =
   let open Network.Infix in
   input get_value el >>= fun ev ->
-  return (last ~init:(get_value el) (to_behaviour ev))
+  return (last ~init:(get_value el) ev)
 
 class type validity =
   object
@@ -40,4 +40,4 @@ let with_dom_error f el =
     | None       -> Ok value
   in
   return (let open Behaviour.Infix in
-          choose <$> bvalue <*> last ~init:None (to_behaviour error_event))
+          choose <$> bvalue <*> last ~init:None error_event)

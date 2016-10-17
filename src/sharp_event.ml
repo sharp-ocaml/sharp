@@ -16,7 +16,7 @@ let with_opt ?(descr="unknown") ?default f el_opt =
               (fun () ->
                 print_string "with_opt: Couldn't bind to an element: ";
                 print_endline descr;
-                Network.return (Behaviour.return default, fun _ -> Sys.time ())
+                Network.return (Behaviour.return default)
               ) f
 
 let ( <% ) f el_opt = with_opt f el_opt

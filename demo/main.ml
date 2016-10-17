@@ -27,12 +27,11 @@ let network () =
   unbound_event () >>= fun remove_event ->
 
   let open Behaviour.Infix in
-  let (add_command : string option Behaviour.t) =
+  let add_command =
     (fun x y -> match x with | None -> None | Some _ -> Some y)
-    <$> to_behaviour click_event <*> description
+    <$> click_event <*> description
   in
-  let commands = (fun x y -> (x, y))
-                 <$> add_command <*> to_behaviour remove_event in
+  let commands = (fun x y -> (x, y)) <$> add_command <*> remove_event in
 
   let step is (add_opt, remove_opt) =
     let is' = match add_opt with

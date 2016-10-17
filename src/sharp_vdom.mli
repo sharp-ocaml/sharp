@@ -29,7 +29,7 @@ val link : ?current:node Js.t -> element Js.t -> t -> Linked.t
 val unlink : Linked.t -> unit
 val diff_and_patch : element Js.t -> Linked.t -> t -> Linked.t
 
-val vdom : element Js.t -> 'a Behaviour.t -> ('a -> t) -> unit Network.t
+val vdom : element Js.t -> ('a, 'b) Behaviour.t -> ('a -> t) -> unit Network.t
 
 (* Helpers for specific elements *)
 module Element : sig

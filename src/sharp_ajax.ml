@@ -27,7 +27,7 @@ let plug_helper ?failure_event success_event frame_lwt =
     let _ = if code >= 200 && code < 300
             then Behaviour.trigger success_event content
             else match failure_event with
-                 | None -> ()
+                 | None       -> None
                  | Some event -> Behaviour.trigger event frame
     in return ()
   in ()
