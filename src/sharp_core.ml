@@ -321,19 +321,24 @@ module Network_extra (M : sig
                           ((time -> unit) -> unit -> unit) -> unit t
                       end) = struct
   let event (connect : ('a -> unit) -> unit -> unit) =
-    let ev = Behaviour.event () in
+    let ({ Behaviour.trigger = trigger_opt } as ev) = Behaviour.event () in
     let flushref = ref (fun _ -> ()) in
     let connect' flush =
       flushref := flush;
-      let trigger' x =
+      let add x =
         match Behaviour.trigger ev x with
         | None   -> ()
         | Some t -> flush t
       in
-      let disconnect = connect trigger' in
+      let disconnect = connect add in
       fun () -> flushref := (fun _ -> ()); disconnect ()
     in
-    M.bind (M.add_funnel connect') (fun _ -> M.pure ev)
+    let trigger_opt' = match trigger_opt with
+      | None         -> None
+      | Some trigger -> Some (fun x -> let t = trigger x in (!flushref) t; t)
+    in
+    M.bind (M.add_funnel connect')
+           (fun _ -> M.pure { ev with Behaviour.trigger = trigger_opt' })
 
   let unbound_event () = event (fun _ _ -> ())
 end
