@@ -122,16 +122,17 @@ module Behaviour_base = struct
 
   let event () =
     let module E = Event in
-    let tip = ref (E.create ()) in
-    let rec b =
+    let tip = E.create () in
+    let tipref = ref tip in
+    let rec b tip =
       let f t =
-        let e = !tip in
-        let x = E.at e t in
-        tip := E.after e t; (x, b)
+        let x    = E.at tip t in
+        let tip' = E.after tip t in
+        tipref := tip'; (x, b tip')
       in B f
     in
-    let add x = E.add !tip (Sys.time ()) x in
-    { behaviour = b; trigger = Some add }
+    let add x = E.add !tipref (Sys.time ()) x in
+    { behaviour = b tip; trigger = Some add }
 
   let trigger { trigger } x = match trigger with
     | None   -> None
