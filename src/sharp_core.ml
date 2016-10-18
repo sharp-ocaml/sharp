@@ -201,6 +201,8 @@ module type Network_base_S = sig
   val apply : ('a -> 'b) t -> 'a t -> 'b t
   val join : 'a t t -> 'a t
 
+  val perform_state_post : ('a, 'b) Behaviour.t -> init:'c
+                           -> f:('c -> 'a -> 'c * (unit -> unit)) -> unit t
   val perform_state : ('a, 'b) Behaviour.t -> init:'c -> f:('c -> 'a -> 'c)
                       -> unit t
   val perform : ('a, 'b) Behaviour.t -> f:('a -> unit) -> unit t
@@ -283,16 +285,19 @@ module Network_base = struct
     ; finaliser   = (fun () -> finaliser' (finaliser ()))
     }
 
-  let perform_state b ~init ~f =
+  let perform_state_post b ~init ~f =
     let bref     = ref b    in
     let stateref = ref init in
     let s t =
       let (x, b') = Behaviour.at !bref t in
       let state   = !stateref in
       bref := { Behaviour.behaviour = b'; trigger = None };
-      let state' = f state x in
-      stateref := state'
+      let (state', post) = f state x in
+      stateref := state'; post ()
     in add_sink s
+
+  let perform_state b ~init ~f =
+    perform_state_post b ~init ~f:(fun x y -> (f x y, fun () -> ()))
 
   let perform b ~f = perform_state ~init:() b ~f:(fun () x -> f x; ())
 

@@ -74,6 +74,15 @@ let element ?network name = node ?network name []
 let tag = element
 let text content = Text (content, Raw.empty)
 
+let make_callback_functions f node =
+  let linked = ref true in
+  let gref   = ref (fun () -> linked := false) in
+  let linked_function () = (!gref) () in
+  let callback () = if !linked
+                    then let unlink = f node in gref := unlink
+                    else ()
+  in (linked_function, callback)
+
 let rec link ?current parent vdom = match vdom with
   | Node (name, attrs, children, f) ->
      let node = document##createElement (Js.string name) in
@@ -85,10 +94,15 @@ let rec link ?current parent vdom = match vdom with
        | None   -> appendChild  parent node
        | Some n -> replaceChild parent node n
      in
-     let children' = List.map (link node) children in
+     let pairs          = List.map (link node) children in
+     let children'      = List.map (fun (n,_) -> n) pairs in
+     let subcallback () = List.iter (fun (_,c) -> c ()) pairs in
      (* children created before initialisation *)
-     let g         = f node in
-     Linked.Node (name, attrs, children', (node, g))
+     let (linked_function, callback) = make_callback_functions f node in
+     let linked_node =
+       Linked.Node (name, attrs, children', (node, linked_function))
+     in
+     (linked_node, fun () -> subcallback (); callback ())
 
   | Text (str, f) ->
      let node = document##createTextNode (Js.string str) in
@@ -96,16 +110,18 @@ let rec link ?current parent vdom = match vdom with
        | None   -> appendChild  parent node
        | Some n -> replaceChild parent node n
      in
-     let g = f node in
-     Linked.Text (str, (node, g))
+     let (linked_function, callback) = make_callback_functions f node in
+     (Linked.Text (str, (node, linked_function)), callback)
 
 let rec unlink vdom = match vdom with
-  | Linked.Node (name, attrs, children, (node, f)) ->
-     let () = f () in
-     let _  = List.map unlink children in
+  | Linked.Node (name, attrs, children, (node, callback)) ->
+     let subcallbacks   = List.map unlink children in
+     let subcallback () = List.iter (fun f -> f ()) subcallbacks in
      Js.Opt.iter (node##.parentNode)
-                 (fun parent -> removeChild parent node)
-  | Linked.Text (str, (node, f)) -> f () (* removeChild fails on texts *)
+                 (fun parent -> removeChild parent node);
+     fun () -> subcallback (); callback ()
+  | Linked.Text (str, (node, callback)) ->
+     callback (* removeChild fails on texts *)
 
 let rec update_attributes node old_attrs new_attrs =
   match old_attrs, new_attrs with
@@ -138,63 +154,71 @@ let rec fold_left2_opt ~f acc xs ys = match xs, ys with
 
 let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
   match vdom_opt, vdom_opt' with
-  | None, Some vdom' -> Some (link parent vdom', true)
-  | Some vdom, None  ->
-     let _ = unlink vdom in None
+  | None, Some vdom' ->
+     let (vdom'', callback) = link parent vdom' in
+     (Some vdom'', callback, true)
+  | Some vdom, None  -> let callback = unlink vdom in (None, callback, true)
   | None, None       -> assert false
 
   | Some (Linked.Node (name, attrs, children, (node, f))),
     Some (Node (name', attrs', children', g)) when name = name' ->
      let node_changed = update_attributes node attrs attrs' in
-     let (children'', children_changed) =
-       fold_left2_opt ([], false) children children'
-                       ~f:(fun acc child child' ->
-                         let (children'', changed) = acc in
-                         let child_opt =
+     let (children'', subcallbacks, children_changed) =
+       fold_left2_opt ([], [], false) children children'
+                      ~f:(fun (children'', callbacks, changed) child child' ->
+                         let (child_opt, callback, changed') =
                            diff_and_patch_opt node child child'
-                         in match child_opt with
-                            | None -> (children'', true)
-                            | Some (child'', changed') ->
-                               (children'' @ [child''], changed || changed')
+                         in
+                         let callbacks' = callbacks @ [callback] in
+                         let changed''  = changed || changed' in
+                         match child_opt with
+                            | None -> (children'', callbacks', true)
+                            | Some child'' ->
+                               (children'' @ [child''], callbacks, changed'')
                        )
      in
-     let _ = f () in
-     let f' = g node in
-     let changed = node_changed || children_changed in
-     Some (Linked.Node (name, attrs', children'', (node, f')), changed)
+     let subcallback () = List.iter (fun k -> k ()) subcallbacks in
+     let changed  = node_changed || children_changed in
+     let g' node = f (); g node in
+     let (linked_function, callback) = make_callback_functions g' node in
+     let linked_node =
+       Linked.Node (name, attrs', children'', (node, linked_function))
+     in (Some linked_node, (fun () -> subcallback (); callback ()), changed)
 
   | Some (Linked.Text (str, (node, f))),
     Some (Text (str', g)) when str != str' ->
      let _ = node##.data := Js.string str' in
-     let _ = f () in
-     let f' = g node in
-     Some (Linked.Text (str', (node, f')), false) (* text change = no change *)
+     let g' node = f (); g node in
+     let (linked_function, callback) = make_callback_functions g' node in
+     let linked_node = Linked.Text (str', (node, linked_function)) in
+     (Some linked_node, callback, false) (* text change = no change *)
 
-  | Some (Linked.Text _ as t), Some (Text _) -> Some (t, false)
+  | Some (Linked.Text _ as t), Some (Text _) -> (Some t, (fun () -> ()), false)
 
   | Some vdom, Some vdom' ->
-     let _ = unlink vdom in
-     Some (link parent vdom', true)
+     let callback = unlink vdom in
+     let (vdom'', callback') = link parent vdom' in
+     let callback'' () = callback (); callback' () in
+     (Some vdom'', callback'', true)
 
 let diff_and_patch parent vdom vdom' =
-  let vdom_opt = diff_and_patch_opt parent (Some vdom) (Some vdom') in
-  match vdom_opt with
-  | Some (vdom'', _) -> vdom''
-  | None -> assert false
+  let (vdom_opt, callback, _) =
+    diff_and_patch_opt parent (Some vdom) (Some vdom')
+  in match vdom_opt with
+     | Some vdom'' -> (vdom'', callback)
+     | None -> callback (); assert false
 
 let vdom parent b f =
   let open Network in
   let open Network.Infix in
-  let finaliser_ref = ref (fun () -> ()) in
   let rec g vdom_opt x =
     let vdom' = f x in
-    let linked = match vdom_opt with
+    let (linked, callback) = match vdom_opt with
       | None      -> link parent vdom'
       | Some vdom -> diff_and_patch parent vdom vdom'
-    in Some linked
+    in (Some linked, callback)
   in
-  perform_state b ~init:None ~f:g >>
-  finally (fun () -> (!finaliser_ref) ())
+  perform_state_post b ~init:None ~f:g
 
 (* Helpers for specific elements *)
 module Element = struct

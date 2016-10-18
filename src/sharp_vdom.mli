@@ -25,9 +25,14 @@ val ( |- ) : t -> t -> t
 val ( |+ ) : t -> t list -> t
 val ( |* ) : t -> string * string -> t
 
-val link : ?current:node Js.t -> element Js.t -> t -> Linked.t
-val unlink : Linked.t -> unit
-val diff_and_patch : element Js.t -> Linked.t -> t -> Linked.t
+val link : ?current:node Js.t -> element Js.t -> t -> Linked.t * (unit -> unit)
+(** Link a VDOM to a node and return a pair with a linked VDOM and a callback to
+    start the subnetworks.
+    This is so that we can use perform_state_post to start the subnetworks after
+    the new state has been recorded. *)
+
+val unlink : Linked.t -> (unit -> unit)
+val diff_and_patch : element Js.t -> Linked.t -> t -> Linked.t * (unit -> unit)
 
 val vdom : element Js.t -> ('a, 'b) Behaviour.t -> ('a -> t) -> unit Network.t
 

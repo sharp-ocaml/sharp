@@ -53,6 +53,8 @@ module type Network_base_S = sig
   val apply : ('a -> 'b) t -> 'a t -> 'b t
   val join : 'a t t -> 'a t
 
+  val perform_state_post : ('a, 'b) Behaviour.t -> init:'c
+                           -> f:('c -> 'a -> 'c * (unit -> unit)) -> unit t
   val perform_state : ('a, 'b) Behaviour.t -> init:'c -> f:('c -> 'a -> 'c)
                       -> unit t
   val perform : ('a, 'b) Behaviour.t -> f:('a -> unit) -> unit t
