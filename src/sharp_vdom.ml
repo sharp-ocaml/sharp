@@ -174,11 +174,11 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
                          match child_opt with
                             | None -> (children'', callbacks', true)
                             | Some child'' ->
-                               (children'' @ [child''], callbacks, changed'')
+                               (children'' @ [child''], callbacks', changed'')
                        )
      in
      let subcallback () = List.iter (fun k -> k ()) subcallbacks in
-     let changed  = node_changed || children_changed in
+     let changed = node_changed || children_changed in
      let g' node = f (); g node in
      let (linked_function, callback) = make_callback_functions g' node in
      let linked_node =
