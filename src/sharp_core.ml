@@ -36,10 +36,21 @@ module Event = struct
 end
 
 module type Behaviour_base_S = sig
-  type ('a, 'b) t
+  type 'a behaviour = B of (time -> 'a * 'a behaviour)
+  type 'a event_trigger = 'a -> time
+
+  type ('a, 'b) t =
+    { behaviour : 'a behaviour
+    ; trigger   : 'b event_trigger option
+    }
+
   type 'a event = ('a option, 'a) t
 
+  val at : 'a behaviour -> time -> 'a * 'a behaviour
+
   val time : (time, 'a) t
+
+  val no_trigger : ('a, 'b) t -> ('a, 'c) t
 
   val map : ('a, 'b) t -> f:('a -> 'c) -> ('c, 'b) t
   val pure : 'a -> ('a, 'b) t
@@ -66,7 +77,7 @@ module type Behaviour_base_S = sig
   val fold : ('a -> 'b -> 'a) -> 'a -> ('b, 'c) t -> ('a, 'd) t
 end
 
-module Behaviour_base = struct
+module Behaviour_base : Behaviour_base_S = struct
   type 'a behaviour = B of (time -> 'a * 'a behaviour)
   type 'a event_trigger = 'a -> time
 
@@ -77,10 +88,12 @@ module Behaviour_base = struct
 
   type 'a event = ('a option, 'a) t
 
-  let at { behaviour } t = let B f = behaviour in f t
+  let at (B f) t = f t
 
   let time =
     let rec b = B (fun t -> (t, b)) in { behaviour = b; trigger = None }
+
+  let no_trigger b = { b with trigger = None }
 
   let rec mapb (B fa) ~f =
     let fb t =
@@ -226,7 +239,7 @@ module type Network_base_S = sig
   val finally : (unit -> unit) -> unit t
 end
 
-module Network_base = struct
+module Network_base : Network_base_S = struct
   (* Receive a function to signal a new event and return a function to
    * disconnect the funnel *)
   type funnel = F of ((time -> unit) -> (unit -> unit))
@@ -298,13 +311,13 @@ module Network_base = struct
     ; finaliser   = (fun () -> finaliser' (finaliser ()))
     }
 
-  let perform_state_post b ~init ~f =
-    let bref     = ref b    in
-    let stateref = ref init in
+  let perform_state_post { Behaviour.behaviour } ~init ~f =
+    let bref     = ref behaviour in
+    let stateref = ref init      in
     let s t =
       let (x, b') = Behaviour.at !bref t in
       let state   = !stateref in
-      bref := { Behaviour.behaviour = b'; trigger = None };
+      bref := b';
       let (state', post) = f state x in
       stateref := state'; post ()
     in add_sink s

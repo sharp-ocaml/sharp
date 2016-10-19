@@ -97,3 +97,16 @@ let tick_manager commands =
                   plan_next_tick t tidref sref tick_event
                 )
   >> return (Behaviour.combine tick_event command_event)
+
+let every diff value =
+  Network.map ~f:Behaviour.no_trigger (tick_manager [Every (value, diff)])
+
+let last_for diff { Behaviour.behaviour; trigger } =
+  let rec f b current now =
+    let (opt, b') = Behaviour.at b now in
+    match opt, current with
+    | None, Some (x, past) when past +. diff >= now ->
+       (Some x, Behaviour.B (f b' current))
+    | None, _ -> (None, Behaviour.B (f b' None))
+    | Some x, _ -> (Some x, Behaviour.B (f b' (Some (x, now))))
+  in { Behaviour.behaviour = Behaviour.B (f behaviour None); trigger }

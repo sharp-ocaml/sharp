@@ -3,10 +3,21 @@ open Sharp_category
 type time = float
 
 module type Behaviour_base_S = sig
-  type ('a, 'b) t
+  type 'a behaviour = B of (time -> 'a * 'a behaviour)
+  type 'a event_trigger = 'a -> time
+
+  type ('a, 'b) t =
+    { behaviour : 'a behaviour
+    ; trigger   : 'b event_trigger option
+    }
+
   type 'a event = ('a option, 'a) t
 
+  val at : 'a behaviour -> time -> 'a * 'a behaviour
+
   val time : (time, 'a) t
+
+  val no_trigger : ('a, 'b) t -> ('a, 'c) t
 
   val map : ('a, 'b) t -> f:('a -> 'c) -> ('c, 'b) t
   val pure : 'a -> ('a, 'b) t
