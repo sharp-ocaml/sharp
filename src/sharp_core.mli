@@ -22,6 +22,8 @@ module type Behaviour_base_S = sig
   val event : unit -> ('a option, 'a) t
   val trigger : ('a, 'b) t -> 'b -> time option
 
+  val combine : ('a, 'b) t -> ('c, 'd) t -> ('a, 'd) t
+
   val on : ('a option, 'b) t -> init:'c -> f:('c -> 'a -> 'c) -> ('c, 'b) t
   val last : ('a option, 'b) t -> init:'a -> ('a, 'b) t
   val toggle : ('a option, 'b) t -> init:bool -> (bool, 'b) t
