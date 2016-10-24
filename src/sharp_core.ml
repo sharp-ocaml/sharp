@@ -234,6 +234,7 @@ module type Network_base_S = sig
   val perform : ('a, 'b) Behaviour.t -> f:('a -> unit) -> unit t
   val react : ('a option, 'b) Behaviour.t -> ('c, 'd) Behaviour.t
               -> f:('a -> 'c -> unit) -> unit t
+  val react_ : ('a option, 'b) Behaviour.t -> f:('a -> unit) -> unit t
 
   val initially : (unit -> unit) -> unit t
   val finally : (unit -> unit) -> unit t
@@ -330,8 +331,13 @@ module Network_base : Network_base_S = struct
   let react e b ~f =
     perform (Behaviour.apply (Behaviour.map ~f:(fun x y -> (x, y)) b) e)
             (fun (bval, eval_opt) -> match eval_opt with
-                                 | None -> ()
-                                 | Some eval -> f eval bval)
+                                     | None -> ()
+                                     | Some eval -> f eval bval)
+
+  let react_ e ~f =
+    perform e (fun eval_opt -> match eval_opt with
+                               | None -> ()
+                               | Some eval -> f eval)
 
   let initially f = { empty with initialiser = f }
   let finally   f = { empty with finaliser   = f }

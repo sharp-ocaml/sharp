@@ -75,6 +75,7 @@ module type Network_base_S = sig
   val perform : ('a, 'b) Behaviour.t -> f:('a -> unit) -> unit t
   val react : ('a option, 'b) Behaviour.t -> ('c, 'd) Behaviour.t
               -> f:('a -> 'c -> unit) -> unit t
+  val react_ : ('a option, 'b) Behaviour.t -> f:('a -> unit) -> unit t
 
   val initially : (unit -> unit) -> unit t
   val finally : (unit -> unit) -> unit t
