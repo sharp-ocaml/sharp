@@ -70,6 +70,9 @@ let router ?(base_path="") routes =
       let _ = trigger path parts in ()
     )
 
+  >> perform_state ~finally:(fun f -> f ()) ~init:(fun () -> ()) disconnect
+                   ~f:(fun _ f -> f)
+
   >> react path disconnect (fun parts callback ->
              match search_routes routes parts with
              | None -> ()
