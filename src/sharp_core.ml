@@ -227,10 +227,11 @@ module type Network_base_S = sig
   val apply : ('a -> 'b) t -> 'a t -> 'b t
   val join : 'a t t -> 'a t
 
-  val perform_state_post : ('a, 'b) Behaviour.t -> init:'c
-                           -> f:('c -> 'a -> 'c * (unit -> unit)) -> unit t
-  val perform_state : ('a, 'b) Behaviour.t -> init:'c -> f:('c -> 'a -> 'c)
-                      -> unit t
+  val perform_state_post : ?finally:('c -> unit) -> ('a, 'b) Behaviour.t
+                           -> init:'c -> f:('c -> 'a -> 'c * (unit -> unit))
+                           -> unit t
+  val perform_state : ?finally:('c -> unit) -> ('a, 'b) Behaviour.t -> init:'c
+                      -> f:('c -> 'a -> 'c) -> unit t
   val perform : ('a, 'b) Behaviour.t -> f:('a -> unit) -> unit t
   val react : ('a option, 'b) Behaviour.t -> ('c, 'd) Behaviour.t
               -> f:('a -> 'c -> unit) -> unit t
@@ -312,7 +313,12 @@ module Network_base : Network_base_S = struct
     ; finaliser   = (fun () -> finaliser' (finaliser ()))
     }
 
-  let perform_state_post { Behaviour.behaviour } ~init ~f =
+  let initially f = { empty with initialiser = f }
+  let finally   f = { empty with finaliser   = f }
+
+  let finally' = finally
+  let perform_state_post ?(finally=fun _ -> ()) { Behaviour.behaviour }
+                         ~init ~f =
     let bref     = ref behaviour in
     let stateref = ref init      in
     let s t =
@@ -321,10 +327,13 @@ module Network_base : Network_base_S = struct
       bref := b';
       let (state', post) = f state x in
       stateref := state'; post ()
-    in add_sink s
+    in
+    let x = finally' (fun () -> finally (!stateref)) in
+    let y = add_sink s in
+    join (map x ~f:(fun () -> y))
 
-  let perform_state b ~init ~f =
-    perform_state_post b ~init ~f:(fun x y -> (f x y, fun () -> ()))
+  let perform_state ?finally b ~init ~f =
+    perform_state_post ?finally b ~init ~f:(fun x y -> (f x y, fun () -> ()))
 
   let perform b ~f = perform_state ~init:() b ~f:(fun () x -> f x; ())
 
@@ -338,9 +347,6 @@ module Network_base : Network_base_S = struct
     perform e (fun eval_opt -> match eval_opt with
                                | None -> ()
                                | Some eval -> f eval)
-
-  let initially f = { empty with initialiser = f }
-  let finally   f = { empty with finaliser   = f }
 end
 
 module type Network_extra_S = sig

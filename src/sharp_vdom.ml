@@ -186,16 +186,16 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
      let (children'', subcallbacks, children_changed) =
        fold_left2_opt ([], [], false) children children'
                       ~f:(fun (children'', callbacks, changed) child child' ->
-                         let (child_opt, callback, changed') =
-                           diff_and_patch_opt node child child'
-                         in
-                         let callbacks' = callbacks @ [callback] in
-                         let changed''  = changed || changed' in
-                         match child_opt with
-                            | None -> (children'', callbacks', true)
-                            | Some child'' ->
-                               (children'' @ [child''], callbacks', changed'')
-                       )
+                        let (child_opt, callback, changed') =
+                          diff_and_patch_opt node child child'
+                        in
+                        let callbacks' = callbacks @ [callback] in
+                        let changed''  = changed || changed' in
+                        match child_opt with
+                        | None -> (children'', callbacks', true)
+                        | Some child'' ->
+                           (children'' @ [child''], callbacks', changed'')
+                      )
      in
      let subcallback () = List.iter (fun k -> k ()) subcallbacks in
 
@@ -264,7 +264,11 @@ let vdom parent b f =
       | Some vdom -> diff_and_patch parent vdom vdom'
     in (Some linked, callback)
   in
-  perform_state_post b ~init:None ~f:g
+  perform_state_post ~init:None ~f:g
+                     ~finally:(function
+                               | None -> ()
+                               | Some vdom -> unlink vdom ()
+                              ) b
 
 (* Helpers for specific elements *)
 module Element = struct
