@@ -28,3 +28,5 @@ val change : ?prevent_default:bool -> ((#Dom_html.eventTarget as 'a) Js.t -> 'b)
              -> 'a Js.t -> 'b Behaviour.event Network.t
 val input : ?prevent_default:bool -> ((#Dom_html.eventTarget as 'a) Js.t -> 'b)
             -> 'a Js.t -> 'b Behaviour.event Network.t
+val hashchange : ?prevent_default:bool -> (Dom_html.window Js.t -> 'b)
+                 -> 'b Behaviour.event Network.t

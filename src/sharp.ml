@@ -10,3 +10,4 @@ module VDOM   = struct
 end
 module Vdom   = VDOM
 module Ticker = Sharp_ticker
+module Router = Sharp_router

@@ -22,7 +22,8 @@ Library sharp
     Sharp_ajax,
     Sharp_vdom,
     Sharp_vdom_subnetwork,
-    Sharp_ticker
+    Sharp_ticker,
+    Sharp_router
 
   BuildDepends:
     js_of_ocaml.ppx

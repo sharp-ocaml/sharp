@@ -30,3 +30,5 @@ let change ?prevent_default f el =
   make ?prevent_default Dom_html.Event.change f el
 let input ?prevent_default f el =
   make ?prevent_default Dom_html.Event.input f el
+let hashchange ?prevent_default f =
+  make ?prevent_default Dom_html.Event.hashchange f Dom_html.window
