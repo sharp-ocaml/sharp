@@ -132,24 +132,22 @@ let rec unlink vdom = match vdom with
      callback (* removeChild fails on texts *)
 
 let rec update_attributes node old_attrs new_attrs =
-  match old_attrs, new_attrs with
-  | [], [] -> false
-  | attrs, [] | [], attrs ->
-     let f name value = node##setAttribute (Js.string name) (Js.string value) in
-     let _ = List.iter (fun (n,v) -> f n v) attrs in
-     true
-  | (name, value) :: old_attrs', _ ->
-     match List.partition (fun (n,_) -> n = name) new_attrs with
-     | [], _ ->
-        let _ = node##removeAttribute (Js.string name) in
-        let _ = update_attributes node old_attrs' new_attrs in
-        true
-     | (_, value') :: _, new_attrs' when value = value' ->
-        update_attributes node old_attrs' new_attrs'
-     | (_, value') :: _, new_attrs' ->
-        let _ = node##setAttribute (Js.string name) (Js.string value') in
-        let _ = update_attributes node old_attrs' new_attrs' in
-        true
+  let set name value = node##setAttribute (Js.string name) (Js.string value) in
+  let remove name    = node##removeAttribute (Js.string name) in
+
+  let rec go acc old_attrs new_attrs = match old_attrs, new_attrs with
+    | [], [] -> acc
+    | [], attrs -> let _ = List.iter (fun (n,v) -> set n v)  attrs in true
+    | attrs, [] -> let _ = List.iter (fun (n,_) -> remove n) attrs in true
+    | (name, value) :: old_attrs', _ ->
+       match List.partition (fun (n,_) -> n = name) new_attrs with
+       | [], _ -> remove name; go true old_attrs' new_attrs
+       | (_, value') :: _, new_attrs' when value = value' ->
+          go acc old_attrs' new_attrs'
+       | (_, value') :: _, new_attrs' ->
+          set name value'; go true old_attrs' new_attrs'
+
+  in go false old_attrs new_attrs
 
 let rec fold_left2_opt ~f acc xs ys = match xs, ys with
   | [], [] -> acc
