@@ -87,19 +87,21 @@ let router ?(base_path="") routes =
 module type Part = sig
   type t
   type parse_func
-  type generate_func
+  type 'a generate_func
 
-  val parse     : t -> parse_func -> string list
-                  -> (unit -> unit -> unit) option
-  val generate  : t -> generate_func
-  val generate_ : string list -> t -> generate_func
+  val parse        : t -> parse_func -> string list
+                     -> (unit -> unit -> unit) option
+  val generate     : t -> string list generate_func
+  val generate_    : string list -> t -> string list generate_func
+  val to_fragment  : t -> string generate_func
+  val to_fragment_ : string -> t -> string generate_func
 end
 
 module Final = struct
   type t = Empty
 
-  type parse_func    = unit -> unit -> unit
-  type generate_func = string list
+  type parse_func       = unit -> unit -> unit
+  type 'a generate_func = 'a
 
   let empty = Empty
 
@@ -108,14 +110,17 @@ module Final = struct
     | _  -> None
 
   let generate_ acc _ = acc
-  let generate = generate_ []
+  let generate _ = []
+
+  let to_fragment_ acc _ = acc
+  let to_fragment _ = "#/"
 end
 
 module Var (Rest : Part) = struct
   type t = Var of Rest.t
 
-  type parse_func    = string -> Rest.parse_func
-  type generate_func = string -> Rest.generate_func
+  type parse_func       = string -> Rest.parse_func
+  type 'a generate_func = string -> 'a Rest.generate_func
 
   let var rest = Var rest
 
@@ -125,13 +130,16 @@ module Var (Rest : Part) = struct
 
   let generate_ acc (Var rest) s = Rest.generate_ (acc @ [s]) rest
   let generate = generate_ []
+
+  let to_fragment_ acc (Var rest) s = Rest.to_fragment_ (acc ^ "/" ^ s) rest
+  let to_fragment = to_fragment_ "#"
 end
 
 module Const (Rest : Part) = struct
   type t = Const of string * Rest.t
 
-  type parse_func    = Rest.parse_func
-  type generate_func = Rest.generate_func
+  type parse_func       = Rest.parse_func
+  type 'a generate_func = 'a Rest.generate_func
 
   let const str rest = Const (str, rest)
 
@@ -141,6 +149,10 @@ module Const (Rest : Part) = struct
 
   let generate_ acc (Const (s, rest)) = Rest.generate_ (acc @ [s]) rest
   let generate = generate_ []
+
+  let to_fragment_ acc (Const (s, rest)) =
+    Rest.to_fragment_ (acc ^ "/" ^ s) rest
+  let to_fragment = to_fragment_ "#"
 end
 
 let empty = Final.empty
