@@ -283,10 +283,7 @@ module Element = struct
             ) "area"
 
   let article ?strategy network =
-    element ?strategy ~network:(fun node ->
-              Js.Opt.case (Dom_html.CoerceTo.div node)
-                          (fun () -> assert false) network
-            ) "article"
+    element ?strategy ~network "article"
 
   let base ?strategy network =
     element ?strategy ~network:(fun node ->
@@ -433,10 +430,7 @@ module Element = struct
             ) "head"
 
   let header ?strategy network =
-    element ?strategy ~network:(fun node ->
-              Js.Opt.case (Dom_html.CoerceTo.div node)
-                          (fun () -> assert false) network
-            ) "header"
+    element ?strategy ~network "header"
 
   let hr ?strategy network =
     element ?strategy ~network:(fun node ->
@@ -511,10 +505,7 @@ module Element = struct
             ) "meta"
 
   let nav ?strategy network =
-    element ?strategy ~network:(fun node ->
-              Js.Opt.case (Dom_html.CoerceTo.div node)
-                          (fun () -> assert false) network
-            ) "nav"
+    element ?strategy ~network "nav"
 
   let _object ?strategy network =
     element ?strategy ~network:(fun node ->
@@ -571,10 +562,7 @@ module Element = struct
             ) "script"
 
   let section ?strategy network =
-    element ?strategy ~network:(fun node ->
-              Js.Opt.case (Dom_html.CoerceTo.div node)
-                          (fun () -> assert false) network
-            ) "section"
+    element ?strategy ~network "section"
 
   let select ?strategy network =
     element ?strategy ~network:(fun node ->

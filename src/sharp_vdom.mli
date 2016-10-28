@@ -1,8 +1,5 @@
 open Sharp_core
 
-open Dom
-open Dom_html
-
 type t
 type attributes
 type restart_strategy =
@@ -12,13 +9,13 @@ module Linked : sig
   type t
 end
 
-val node    : ?network:(element Js.t -> unit Network.t)
+val node    : ?network:(Dom_html.element Js.t -> unit Network.t)
               -> ?strategy:restart_strategy -> string -> t list -> t
-val element : ?network:(element Js.t -> unit Network.t)
+val element : ?network:(Dom_html.element Js.t -> unit Network.t)
               -> ?strategy:restart_strategy-> string -> t
-val tag     : ?network:(element Js.t -> unit Network.t)
+val tag     : ?network:(Dom_html.element Js.t -> unit Network.t)
               -> ?strategy:restart_strategy -> string -> t
-val text    : ?network:(text Js.t -> unit Network.t)
+val text    : ?network:(Dom.text Js.t -> unit Network.t)
               -> ?strategy:restart_strategy -> string -> t
 
 val append_child  : t -> t -> t
@@ -31,16 +28,19 @@ val ( |- ) : t -> t -> t
 val ( |+ ) : t -> t list -> t
 val ( |* ) : t -> string * string -> t
 
-val link : ?current:node Js.t -> element Js.t -> t -> Linked.t * (unit -> unit)
+val link : ?current:Dom.node Js.t -> Dom_html.element Js.t -> t
+           -> Linked.t * (unit -> unit)
 (** Link a VDOM to a node and return a pair with a linked VDOM and a callback to
     start the subnetworks.
     This is so that we can use perform_state_post to start the subnetworks after
     the new state has been recorded. *)
 
 val unlink : Linked.t -> (unit -> unit)
-val diff_and_patch : element Js.t -> Linked.t -> t -> Linked.t * (unit -> unit)
+val diff_and_patch : Dom_html.element Js.t -> Linked.t -> t
+                     -> Linked.t * (unit -> unit)
 
-val vdom : element Js.t -> ('a, 'b) Behaviour.t -> ('a -> t) -> unit Network.t
+val vdom : Dom_html.element Js.t -> ('a, 'b) Behaviour.t -> ('a -> t)
+           -> unit Network.t
 
 (* Helpers for specific elements *)
 module Element : sig
@@ -49,7 +49,7 @@ module Element : sig
   val area       : ?strategy:restart_strategy
                    -> (Dom_html.areaElement Js.t -> 'a Network.t) -> t
   val article    : ?strategy:restart_strategy
-                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
+                   -> (Dom_html.element Js.t -> 'a Network.t) -> t
   val base       : ?strategy:restart_strategy
                    -> (Dom_html.baseElement Js.t -> 'a Network.t) -> t
   val blockquote : ?strategy:restart_strategy
@@ -97,7 +97,7 @@ module Element : sig
   val h6         : ?strategy:restart_strategy
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
   val header     : ?strategy:restart_strategy
-                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
+                   -> (Dom_html.element Js.t -> 'a Network.t) -> t
   val head       : ?strategy:restart_strategy
                    -> (Dom_html.headElement Js.t -> 'a Network.t) -> t
   val hr         : ?strategy:restart_strategy
@@ -125,7 +125,7 @@ module Element : sig
   val meta       : ?strategy:restart_strategy
                    -> (Dom_html.metaElement Js.t -> 'a Network.t) -> t
   val nav        : ?strategy:restart_strategy
-                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
+                   -> (Dom_html.element Js.t -> 'a Network.t) -> t
   val _object    : ?strategy:restart_strategy
                    -> (Dom_html.objectElement Js.t -> 'a Network.t) -> t
   val ol         : ?strategy:restart_strategy
@@ -145,7 +145,7 @@ module Element : sig
   val script     : ?strategy:restart_strategy
                    -> (Dom_html.scriptElement Js.t -> 'a Network.t) -> t
   val section    : ?strategy:restart_strategy
-                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
+                   -> (Dom_html.element Js.t -> 'a Network.t) -> t
   val select     : ?strategy:restart_strategy
                    -> (Dom_html.selectElement Js.t -> 'a Network.t) -> t
   val style      : ?strategy:restart_strategy
