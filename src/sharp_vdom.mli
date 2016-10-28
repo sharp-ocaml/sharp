@@ -48,6 +48,8 @@ module Element : sig
                    -> (Dom_html.anchorElement Js.t -> 'a Network.t) -> t
   val area       : ?strategy:restart_strategy
                    -> (Dom_html.areaElement Js.t -> 'a Network.t) -> t
+  val article    : ?strategy:restart_strategy
+                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
   val base       : ?strategy:restart_strategy
                    -> (Dom_html.baseElement Js.t -> 'a Network.t) -> t
   val blockquote : ?strategy:restart_strategy
@@ -94,6 +96,8 @@ module Element : sig
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
   val h6         : ?strategy:restart_strategy
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
+  val header     : ?strategy:restart_strategy
+                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
   val head       : ?strategy:restart_strategy
                    -> (Dom_html.headElement Js.t -> 'a Network.t) -> t
   val hr         : ?strategy:restart_strategy
@@ -120,6 +124,8 @@ module Element : sig
                    -> (Dom_html.mapElement Js.t -> 'a Network.t) -> t
   val meta       : ?strategy:restart_strategy
                    -> (Dom_html.metaElement Js.t -> 'a Network.t) -> t
+  val nav        : ?strategy:restart_strategy
+                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
   val _object    : ?strategy:restart_strategy
                    -> (Dom_html.objectElement Js.t -> 'a Network.t) -> t
   val ol         : ?strategy:restart_strategy
@@ -138,6 +144,8 @@ module Element : sig
                    -> (Dom_html.quoteElement Js.t -> 'a Network.t) -> t
   val script     : ?strategy:restart_strategy
                    -> (Dom_html.scriptElement Js.t -> 'a Network.t) -> t
+  val section    : ?strategy:restart_strategy
+                   -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
   val select     : ?strategy:restart_strategy
                    -> (Dom_html.selectElement Js.t -> 'a Network.t) -> t
   val style      : ?strategy:restart_strategy
