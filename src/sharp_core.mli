@@ -58,8 +58,14 @@ module Behavior = Behaviour
 module type Network_base_S = sig
   type 'a t
   type ('a, 'b) secondary_t = 'a t
+  type manager
 
-  val start : 'a t -> unit -> unit
+  val noop_manager : manager
+
+  val start : 'a t -> manager
+  val flush : manager -> time -> unit
+  val stop  : manager -> unit
+
   val add_funnel : ((time -> unit) -> unit -> unit) -> unit t
   val add_sink : (time -> unit) -> unit t
 

@@ -1,6 +1,6 @@
 open Sharp_core
 
-type route = string list -> (unit -> unit -> unit) option
+type route = string list -> unit Network.t option
 
 val router : ?base_path:string -> route list
              -> string list Behaviour.event Network.t
@@ -19,7 +19,7 @@ end
 
 module Final : sig
   type t = Empty
-  type parse_func       = unit -> unit -> unit
+  type parse_func       = unit Network.t
   type 'a generate_func = 'a
 
   include Part with type t := t and type parse_func       := parse_func

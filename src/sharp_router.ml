@@ -4,7 +4,7 @@ open Sharp_event
 open Behaviour
 open Network
 
-type route = string list -> (unit -> unit -> unit) option
+type route = string list -> unit Network.t option
 
 let to_chars str =
   let rec go acc i =
@@ -46,7 +46,7 @@ let rec search_routes routes parts = match routes with
   | [] -> None
   | route :: routes' ->
      match route parts with
-     | Some callback as res -> res
+     | Some net as res -> res
      | None -> search_routes routes' parts
 
 let router ?(base_path="") routes =
@@ -55,7 +55,8 @@ let router ?(base_path="") routes =
                let hash = Dom_html.window##.location##.hash in
                to_parts (Js.to_string hash)
              ) >>= fun path ->
-  (last ~init:(fun () -> ()) <$> unbound_event ()) >>= fun disconnect ->
+  (last ~init:(fun t  -> ()) <$> unbound_event ()) >>= fun flush ->
+  (last ~init:(fun () -> ()) <$> unbound_event ()) >>= fun stop  ->
 
   initially (fun () ->
       let parts_from_hash =
@@ -70,18 +71,22 @@ let router ?(base_path="") routes =
       let _ = trigger path parts in ()
     )
 
-  >> perform_state ~finally:(fun f -> f ()) ~init:(fun () -> ()) disconnect
+  >> perform (let open Behaviour.Infix in
+              (fun x y -> (x, y)) <$> flush <*> Behaviour.time)
+             (fun (flush, t) -> flush t)
+  >> perform_state ~finally:(fun f -> f ()) ~init:(fun () -> ()) stop
                    ~f:(fun _ f -> f)
 
-  >> react path disconnect (fun parts callback ->
+  >> react path stop (fun parts stop_ ->
              match search_routes routes parts with
              | None -> ()
-             | Some connect ->
+             | Some net ->
                 let str = from_parts parts in
                 push_state str (base_path ^ str);
-                callback ();
-                let callback' = connect () in
-                let _ = trigger disconnect callback' in
+                stop_ ();
+                let manager = Network.start net in
+                let _ = trigger flush (Network.flush manager) in
+                let _ = trigger stop (fun () -> Network.stop manager) in
                 ()
             )
 
@@ -92,8 +97,7 @@ module type Part = sig
   type parse_func
   type 'a generate_func
 
-  val parse        : t -> parse_func -> string list
-                     -> (unit -> unit -> unit) option
+  val parse        : t -> parse_func -> string list -> unit Network.t option
   val generate     : t -> string list generate_func
   val generate_    : string list -> t -> string list generate_func
   val to_fragment  : t -> string generate_func
@@ -103,7 +107,7 @@ end
 module Final = struct
   type t = Empty
 
-  type parse_func       = unit -> unit -> unit
+  type parse_func       = unit Network.t
   type 'a generate_func = 'a
 
   let empty = Empty

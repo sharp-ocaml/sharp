@@ -217,8 +217,14 @@ module Behavior = Behaviour
 module type Network_base_S = sig
   type 'a t
   type ('a, 'b) secondary_t = 'a t
+  type manager
 
-  val start : 'a t -> unit -> unit
+  val noop_manager : manager
+
+  val start : 'a t -> manager
+  val flush : manager -> time -> unit
+  val stop  : manager -> unit
+
   val add_funnel : ((time -> unit) -> unit -> unit) -> unit t
   val add_sink : (time -> unit) -> unit t
 
@@ -258,6 +264,13 @@ module Network_base : Network_base_S = struct
 
   type ('a, 'b) secondary_t = 'a t
 
+  type manager =
+    { flush : time -> unit
+    ; stop  : unit -> unit
+    }
+
+  let noop_manager = { flush = (fun _ -> ()); stop = (fun _ -> ()) }
+
   (* helper for start *)
   let rec connect acc signal = function
     | [] -> acc
@@ -275,7 +288,11 @@ module Network_base : Network_base_S = struct
     let signal t = flush_sinks t sinks in
     let proxy_signal t = if !started then signal t else () in
     let disconnect = connect (fun () -> finaliser ()) proxy_signal funnels in
-    started := true; initialiser (); signal (Sys.time ()); disconnect
+    started := true; initialiser (); signal (Sys.time ());
+    { flush = signal; stop = disconnect }
+
+  let flush { flush } = flush
+  let stop  { stop  } = stop ()
 
   let empty =
     { value       = ()
