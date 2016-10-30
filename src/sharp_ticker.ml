@@ -83,13 +83,13 @@ let tick_manager commands =
   let tidref = ref None in
 
   let open Network.Infix in
-  Network.unbound_event () >>= fun tick_event ->
+  Network.event () >>= fun tick_event ->
 
   let connect trigger =
     plan_next_tick (Sys.time ()) tidref sref tick_event;
     fun () -> interrupt tidref
   in
-  Network.event connect >>= fun command_event ->
+  Network.event ~connect () >>= fun command_event ->
 
   Network.react command_event Behaviour.time (fun cmd t ->
                   interrupt tidref;

@@ -90,8 +90,8 @@ end
 
 module type Network_extra_S = sig
   type 'a t
-  val event : (('a -> unit) -> (unit -> unit)) -> 'a Behaviour.event t
-  val unbound_event : unit -> 'a Behaviour.event t
+  val event : ?connect:(('a -> unit) -> (unit -> unit))
+              -> unit -> 'a Behaviour.event t
 end
 
 module Network : sig

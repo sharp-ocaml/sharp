@@ -55,8 +55,8 @@ let router ?(base_path="") routes =
                let hash = Dom_html.window##.location##.hash in
                to_parts (Js.to_string hash)
              ) >>= fun path ->
-  (last ~init:(fun t  -> ()) <$> unbound_event ()) >>= fun flush ->
-  (last ~init:(fun () -> ()) <$> unbound_event ()) >>= fun stop  ->
+  (last ~init:(fun t  -> ()) <$> event ()) >>= fun flush ->
+  (last ~init:(fun () -> ()) <$> event ()) >>= fun stop  ->
 
   initially (fun () ->
       let parts_from_hash =

@@ -1,12 +1,12 @@
 open Sharp_core
 
 let make ?(prevent_default=true) event get_value el =
-  let f add =
+  let connect add =
     let callback _ _ = add (get_value el); not prevent_default in
     let listener = Dom_events.listen el event callback in
     fun () -> Dom_events.stop_listen listener
   in
-  Network.event f
+  Network.event ~connect ()
 
 let make_unit ?prevent_default event el =
   make ?prevent_default event (fun _ -> ()) el

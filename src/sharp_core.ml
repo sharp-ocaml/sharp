@@ -368,8 +368,8 @@ end
 
 module type Network_extra_S = sig
   type 'a t
-  val event : (('a -> unit) -> (unit -> unit)) -> ('a option, 'a) Behaviour.t t
-  val unbound_event : unit -> ('a option, 'a) Behaviour.t t
+  val event : ?connect:(('a -> unit) -> (unit -> unit)) -> unit
+              -> 'a Behaviour.event t
 end
 
 module Network_extra (M : sig
@@ -380,7 +380,7 @@ module Network_extra (M : sig
                         val add_funnel :
                           ((time -> unit) -> unit -> unit) -> unit t
                       end) = struct
-  let event (connect : ('a -> unit) -> unit -> unit) =
+  let event ?(connect=fun _ _ -> ()) () =
     let ({ Behaviour.trigger = trigger_opt } as ev) = Behaviour.event () in
     let flushref = ref (fun _ -> ()) in
     let connect' flush =
@@ -399,8 +399,6 @@ module Network_extra (M : sig
     in
     M.bind (M.add_funnel connect')
            (fun _ -> M.pure { ev with Behaviour.trigger = trigger_opt' })
-
-  let unbound_event () = event (fun _ _ -> ())
 end
 
 module Network = struct

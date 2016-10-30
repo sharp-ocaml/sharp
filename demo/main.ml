@@ -24,7 +24,7 @@ let network () =
   let open Network.Infix in
   text_field description_field >>= fun description ->
   click ~prevent_default:true add_button >>= fun click_event ->
-  unbound_event () >>= fun remove_event ->
+  event () >>= fun remove_event ->
 
   let open Behaviour.Infix in
   let add_command =

@@ -4,14 +4,14 @@ open XmlHttpRequest
 
 exception HTTPFailure of http_frame
 
-let frame_receiver   () = Network.unbound_event ()
-let success_receiver () = Network.unbound_event ()
-let result_receiver  () = Network.unbound_event ()
+let frame_receiver   () = Network.event ()
+let success_receiver () = Network.event ()
+let result_receiver  () = Network.event ()
 
 let diff_receiver () =
   let open Network.Infix in
   (fun success failure -> (success, failure))
-  <$> Network.unbound_event () <*> Network.unbound_event ()
+  <$> Network.event () <*> Network.event ()
 
 let plug_lwt event value_lwt =
   Lwt.on_success value_lwt (fun value ->
