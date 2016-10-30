@@ -8,9 +8,11 @@ val router : ?base_path:string -> route list
 module type Part = sig
   type t
   type parse_func
+  type parse_opt_func
   type 'a generate_func
 
   val parse        : t -> parse_func -> route
+  val parse_opt    : t -> parse_opt_func -> route
   val generate     : t -> string list generate_func
   val generate_    : string list -> t -> string list generate_func
   val to_fragment  : t -> string generate_func
@@ -19,10 +21,13 @@ end
 
 module Final : sig
   type t = Empty
+
   type parse_func       = unit Network.t
+  type parse_opt_func   = unit Network.t option
   type 'a generate_func = 'a
 
   include Part with type t := t and type parse_func       := parse_func
+                                and type parse_opt_func   := parse_opt_func
                                 and type 'a generate_func := 'a generate_func
 
   val empty : t
@@ -32,9 +37,11 @@ module Var (Rest : Part) : sig
   type t = Var of Rest.t
 
   type parse_func       = string -> Rest.parse_func
+  type parse_opt_func   = string -> Rest.parse_opt_func
   type 'a generate_func = string -> 'a Rest.generate_func
 
   include Part with type t := t and type parse_func       := parse_func
+                                and type parse_opt_func   := parse_opt_func
                                 and type 'a generate_func := 'a generate_func
 
   val var : Rest.t -> t
@@ -44,9 +51,11 @@ module Const (Rest : Part) : sig
   type t = Const of string * Rest.t
 
   type parse_func       = Rest.parse_func
+  type parse_opt_func   = Rest.parse_opt_func
   type 'a generate_func = 'a Rest.generate_func
 
   include Part with type t := t and type parse_func       := parse_func
+                                and type parse_opt_func   := parse_opt_func
                                 and type 'a generate_func := 'a generate_func
 
   val const : string -> Rest.t -> t

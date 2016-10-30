@@ -98,9 +98,11 @@ let router ?(base_path="") routes =
 module type Part = sig
   type t
   type parse_func
+  type parse_opt_func
   type 'a generate_func
 
-  val parse        : t -> parse_func -> string list -> unit Network.t option
+  val parse        : t -> parse_func     -> route
+  val parse_opt    : t -> parse_opt_func -> route
   val generate     : t -> string list generate_func
   val generate_    : string list -> t -> string list generate_func
   val to_fragment  : t -> string generate_func
@@ -111,12 +113,17 @@ module Final = struct
   type t = Empty
 
   type parse_func       = unit Network.t
+  type parse_opt_func   = unit Network.t option
   type 'a generate_func = 'a
 
   let empty = Empty
 
   let parse _ acc = function
     | [] -> Some acc
+    | _  -> None
+
+  let parse_opt _ acc = function
+    | [] -> acc
     | _  -> None
 
   let generate_ acc _ = acc
@@ -130,6 +137,7 @@ module Var (Rest : Part) = struct
   type t = Var of Rest.t
 
   type parse_func       = string -> Rest.parse_func
+  type parse_opt_func   = string -> Rest.parse_opt_func
   type 'a generate_func = string -> 'a Rest.generate_func
 
   let var rest = Var rest
@@ -137,6 +145,10 @@ module Var (Rest : Part) = struct
   let parse (Var rest) f = function
     | [] -> None
     | s :: parts -> Rest.parse rest (f s) parts
+
+  let parse_opt (Var rest) f = function
+    | [] -> None
+    | s :: parts -> Rest.parse_opt rest (f s) parts
 
   let generate_ acc (Var rest) s = Rest.generate_ (acc @ [s]) rest
   let generate = generate_ []
@@ -149,12 +161,17 @@ module Const (Rest : Part) = struct
   type t = Const of string * Rest.t
 
   type parse_func       = Rest.parse_func
+  type parse_opt_func   = Rest.parse_opt_func
   type 'a generate_func = 'a Rest.generate_func
 
   let const str rest = Const (str, rest)
 
   let parse (Const (str, rest)) f = function
     | s :: parts when s = str -> Rest.parse rest f parts
+    | _ -> None
+
+  let parse_opt (Const (str, rest)) f = function
+    | s :: parts when s = str -> Rest.parse_opt rest f parts
     | _ -> None
 
   let generate_ acc (Const (s, rest)) = Rest.generate_ (acc @ [s]) rest
