@@ -59,16 +59,19 @@ let router ?(base_path="") routes =
   (last ~init:(fun () -> ()) <$> event ()) >>= fun stop  ->
 
   initially (fun () ->
-      let parts_from_hash =
-        to_parts (Js.to_string Dom_html.window##.location##.hash)
-      and parts_from_path =
+      let hash = Js.to_string Dom_html.window##.location##.hash in
+      let get_parts_from_hash () = to_parts hash in
+      let get_parts_from_path () =
         to_parts (Js.to_string Dom_html.window##.location##.pathname)
       in
-      let parts = match search_routes routes parts_from_hash with
-        | Some _ -> parts_from_hash
-        | None   -> parts_from_path
-      in
-      let _ = trigger path parts in ()
+      if hash = ""
+      then let _ = trigger path (get_parts_from_path ()) in ()
+      else
+        let parts_from_hash = get_parts_from_hash () in
+        let parts = match search_routes routes parts_from_hash with
+          | Some _ -> parts_from_hash
+          | None   -> get_parts_from_path ()
+        in let _ = trigger path parts in ()
     )
 
   >> perform (let open Behaviour.Infix in
