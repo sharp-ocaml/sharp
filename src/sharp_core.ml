@@ -14,7 +14,9 @@ module Event = struct
     | Cons (t', _, es') -> add es' (t +. epsilon_float) x
     | Stop r ->
        match !r with
-       | None -> r := Some (Cons (t, x, (create ()))); t
+       | None ->
+          let tip = create () in
+          r := Some (Cons (t, x, tip)); (t, tip)
        | Some es' -> add es' t x
 
   let rec at es t = match es with
@@ -145,17 +147,20 @@ module Behaviour_base : Behaviour_base_S = struct
 
   let event () =
     let module E = Event in
-    let tip = E.create () in
-    let tipref = ref tip in
-    let rec b tip =
+    let rec b ev =
       let f t =
-        let x    = E.at tip t in
-        let tip' = E.after tip t in
-        tipref := tip'; (x, b tip')
+        let x   = E.at    ev t in
+        let ev' = E.after ev t in
+        (x, b ev')
       in B f
     in
-    let add x = E.add !tipref (Sys.time ()) x in
-    { behaviour = b tip; trigger = Some add }
+    let ev = E.create () in
+    let tipref = ref ev in
+    let add x =
+      let (t, tip') = E.add !tipref (Sys.time ()) x in
+      tipref := tip'; t
+    in
+    { behaviour = b ev; trigger = Some add }
 
   let trigger { trigger } x = match trigger with
     | None   -> None
@@ -283,9 +288,21 @@ module Network_base : Network_base_S = struct
     | [] -> ()
     | S s :: sinks' -> s t; flush_sinks t sinks'
 
+  let rec sequentially (f : 'a -> unit) =
+    let stateref = ref None in
+    let rec consume () = match !stateref with
+      | Some [] -> stateref := None
+      | Some (x :: xs) -> stateref := Some xs; f x; consume ()
+      | None -> assert false
+    in
+    fun x ->
+    match !stateref with
+    | None -> stateref := Some [x]; consume ()
+    | Some xs -> stateref := Some (xs @ [x])
+
   let start { funnels; sinks; initialiser; finaliser } =
     let started = ref false in
-    let signal t = flush_sinks t sinks in
+    let signal = sequentially (fun t -> flush_sinks t sinks) in
     let proxy_signal t = if !started then signal t else () in
     let disconnect = connect (fun () -> finaliser ()) proxy_signal funnels in
     started := true; initialiser (); signal (Sys.time ());
