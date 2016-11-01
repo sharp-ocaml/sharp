@@ -1,5 +1,8 @@
 open Sharp_core
 
+open Behaviour
+open Network
+
 open Dom
 open Dom_html
 
@@ -270,7 +273,6 @@ let vdom parent b f =
   let open Behaviour.Infix in
   let dat = (fun x y -> (x, y)) <$> Behaviour.time <*> b in
 
-  let open Network in
   let open Network.Infix in
   let rec g vdom_opt (t, x) =
     let vdom' = f x in

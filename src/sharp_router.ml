@@ -4,7 +4,7 @@ open Sharp_event
 open Behaviour
 open Network
 
-type route = string list -> unit Network.t option
+type 'a route = string list -> ('a -> unit Network.t) option
 
 let to_chars str =
   let rec go acc i =
@@ -49,7 +49,7 @@ let rec search_routes routes parts = match routes with
      | Some net as res -> res
      | None -> search_routes routes' parts
 
-let router ?(base_path="") routes =
+let router ?(base_path="") b routes =
   let open Network.Infix in
   hashchange ~prevent_default:false (fun _ ->
                let hash = Dom_html.window##.location##.hash in
@@ -58,7 +58,11 @@ let router ?(base_path="") routes =
   (last ~init:(fun t  -> ()) <$> event ()) >>= fun flush ->
   (last ~init:(fun () -> ()) <$> event ()) >>= fun stop  ->
 
-  initially (fun () ->
+  let open Behaviour.Infix in
+  let dat = (fun x y -> (x, y)) <$> stop <*> b in
+
+  let open Network.Infix in
+  initially (fun _ ->
       let hash = Js.to_string Dom_html.window##.location##.hash in
       let get_parts_from_hash () = to_parts hash in
       let get_parts_from_path () =
@@ -80,14 +84,14 @@ let router ?(base_path="") routes =
   >> perform_state ~finally:(fun f -> f ()) ~init:(fun () -> ()) stop
                    ~f:(fun _ f -> f)
 
-  >> react path stop (fun parts stop_ ->
+  >> react path dat (fun parts (stop_, x) ->
              match search_routes routes parts with
              | None -> ()
              | Some net ->
                 let str = from_parts parts in
                 push_state str (base_path ^ str);
                 stop_ ();
-                let manager = Network.start net in
+                let manager = Network.start (net x) in
                 let _ = trigger flush (Network.flush manager) in
                 let _ = trigger stop (fun () -> Network.stop manager) in
                 ()
@@ -95,14 +99,16 @@ let router ?(base_path="") routes =
 
   >> Network.return path
 
+let router_ ?base_path = router ?base_path (Behaviour.pure ())
+
 module type Part = sig
   type t
-  type parse_func
-  type parse_opt_func
+  type 'a parse_func
+  type 'a parse_opt_func
   type 'a generate_func
 
-  val parse        : t -> parse_func     -> route
-  val parse_opt    : t -> parse_opt_func -> route
+  val parse        : t -> 'a parse_func     -> 'a route
+  val parse_opt    : t -> 'a parse_opt_func -> 'a route
   val generate     : t -> string list generate_func
   val generate_    : string list -> t -> string list generate_func
   val to_fragment  : t -> string generate_func
@@ -112,18 +118,18 @@ end
 module Final = struct
   type t = Empty
 
-  type parse_func       = unit Network.t
-  type parse_opt_func   = unit Network.t option
-  type 'a generate_func = 'a
+  type 'a parse_func     = 'a -> unit Network.t
+  type 'a parse_opt_func = ('a -> unit Network.t) option
+  type 'a generate_func  = 'a
 
   let empty = Empty
 
-  let parse _ acc = function
-    | [] -> Some acc
+  let parse _ f = function
+    | [] -> Some f
     | _  -> None
 
-  let parse_opt _ acc = function
-    | [] -> acc
+  let parse_opt _ f = function
+    | [] -> f
     | _  -> None
 
   let generate_ acc _ = acc
@@ -136,9 +142,9 @@ end
 module Var (Rest : Part) = struct
   type t = Var of Rest.t
 
-  type parse_func       = string -> Rest.parse_func
-  type parse_opt_func   = string -> Rest.parse_opt_func
-  type 'a generate_func = string -> 'a Rest.generate_func
+  type 'a parse_func     = string -> 'a Rest.parse_func
+  type 'a parse_opt_func = string -> 'a Rest.parse_opt_func
+  type 'a generate_func  = string -> 'a Rest.generate_func
 
   let var rest = Var rest
 
@@ -160,9 +166,9 @@ end
 module Const (Rest : Part) = struct
   type t = Const of string * Rest.t
 
-  type parse_func       = Rest.parse_func
-  type parse_opt_func   = Rest.parse_opt_func
-  type 'a generate_func = 'a Rest.generate_func
+  type 'a parse_func     = 'a Rest.parse_func
+  type 'a parse_opt_func = 'a Rest.parse_opt_func
+  type 'a generate_func  = 'a Rest.generate_func
 
   let const str rest = Const (str, rest)
 

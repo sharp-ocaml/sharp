@@ -1,18 +1,21 @@
 open Sharp_core
 
-type route = string list -> unit Network.t option
+type 'a route = string list -> ('a -> unit Network.t) option
 
-val router : ?base_path:string -> route list
+val router : ?base_path:string -> ('a, 'b) Behaviour.t -> 'a route list
              -> string list Behaviour.event Network.t
+
+val router_ : ?base_path:string -> unit route list
+              -> string list Behaviour.event Network.t
 
 module type Part = sig
   type t
-  type parse_func
-  type parse_opt_func
+  type 'a parse_func
+  type 'a parse_opt_func
   type 'a generate_func
 
-  val parse        : t -> parse_func -> route
-  val parse_opt    : t -> parse_opt_func -> route
+  val parse        : t -> 'a parse_func -> 'a route
+  val parse_opt    : t -> 'a parse_opt_func -> 'a route
   val generate     : t -> string list generate_func
   val generate_    : string list -> t -> string list generate_func
   val to_fragment  : t -> string generate_func
@@ -22,13 +25,13 @@ end
 module Final : sig
   type t = Empty
 
-  type parse_func       = unit Network.t
-  type parse_opt_func   = unit Network.t option
-  type 'a generate_func = 'a
+  type 'a parse_func     = 'a -> unit Network.t
+  type 'a parse_opt_func = ('a -> unit Network.t) option
+  type 'a generate_func  = 'a
 
-  include Part with type t := t and type parse_func       := parse_func
-                                and type parse_opt_func   := parse_opt_func
-                                and type 'a generate_func := 'a generate_func
+  include Part with type t := t and type 'a parse_func     := 'a parse_func
+                                and type 'a parse_opt_func := 'a parse_opt_func
+                                and type 'a generate_func  := 'a generate_func
 
   val empty : t
 end
@@ -36,13 +39,13 @@ end
 module Var (Rest : Part) : sig
   type t = Var of Rest.t
 
-  type parse_func       = string -> Rest.parse_func
-  type parse_opt_func   = string -> Rest.parse_opt_func
-  type 'a generate_func = string -> 'a Rest.generate_func
+  type 'a parse_func     = string -> 'a Rest.parse_func
+  type 'a parse_opt_func = string -> 'a Rest.parse_opt_func
+  type 'a generate_func  = string -> 'a Rest.generate_func
 
-  include Part with type t := t and type parse_func       := parse_func
-                                and type parse_opt_func   := parse_opt_func
-                                and type 'a generate_func := 'a generate_func
+  include Part with type t := t and type 'a parse_func     := 'a parse_func
+                                and type 'a parse_opt_func := 'a parse_opt_func
+                                and type 'a generate_func  := 'a generate_func
 
   val var : Rest.t -> t
 end
@@ -50,13 +53,13 @@ end
 module Const (Rest : Part) : sig
   type t = Const of string * Rest.t
 
-  type parse_func       = Rest.parse_func
-  type parse_opt_func   = Rest.parse_opt_func
-  type 'a generate_func = 'a Rest.generate_func
+  type 'a parse_func     = 'a Rest.parse_func
+  type 'a parse_opt_func = 'a Rest.parse_opt_func
+  type 'a generate_func  = 'a Rest.generate_func
 
-  include Part with type t := t and type parse_func       := parse_func
-                                and type parse_opt_func   := parse_opt_func
-                                and type 'a generate_func := 'a generate_func
+  include Part with type t := t and type 'a parse_func     := 'a parse_func
+                                and type 'a parse_opt_func := 'a parse_opt_func
+                                and type 'a generate_func  := 'a generate_func
 
   val const : string -> Rest.t -> t
 end
