@@ -41,6 +41,7 @@ val diff_and_patch : Dom_html.element Js.t -> Linked.t -> t
 
 val vdom : Dom_html.element Js.t -> ('a, 'b) Behaviour.t -> ('a -> t)
            -> unit Network.t
+val vdom_ : Dom_html.element Js.t -> (unit -> t) -> unit Network.t
 
 (* Helpers for specific elements *)
 module Element : sig

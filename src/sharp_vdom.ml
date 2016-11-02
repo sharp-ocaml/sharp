@@ -290,6 +290,8 @@ let vdom parent b f =
                      )
                      dat
 
+let vdom_ parent f = vdom parent (Behaviour.pure ()) f
+
 (* Helpers for specific elements *)
 module Element = struct
   let a ?strategy network =
