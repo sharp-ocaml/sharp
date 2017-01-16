@@ -25,6 +25,7 @@ module type Behaviour_base_S = sig
   val join : (('a, 'b) t, 'c) t -> ('a, 'd) t
 
   val contramap : ('a, 'b) t -> f:('c -> 'b) -> ('a, 'c) t
+  val contramap_opt : ('a, 'b) t -> f:('c -> 'b option) -> ('a, 'c) t
 
   val ( <$?> ) : ('a -> 'b) -> ('a option, 'c) t -> ('b option, 'c) t
   val ( <*?> ) :

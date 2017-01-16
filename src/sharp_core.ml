@@ -60,6 +60,7 @@ module type Behaviour_base_S = sig
   val join : (('a, 'b) t, 'c) t -> ('a, 'd) t
 
   val contramap : ('a, 'b) t -> f:('c -> 'b) -> ('a, 'c) t
+  val contramap_opt : ('a, 'b) t -> f:('c -> 'b option) -> ('a, 'c) t
 
   val ( <$?> ) : ('a -> 'b) -> ('a option, 'c) t -> ('b option, 'c) t
   val ( <*?> ) :
@@ -132,6 +133,14 @@ module Behaviour_base : Behaviour_base_S = struct
     let trigger' = match trigger with
       | None   -> None
       | Some g -> Some (fun x -> g (f x))
+    in { behaviour; trigger = trigger' }
+
+  let contramap_opt { behaviour; trigger } ~f =
+    let trigger' = match trigger with
+      | None   -> None
+      | Some g -> Some (fun x -> match f x with
+                                 | Some y -> g y
+                                 | none -> Sys.time ())
     in { behaviour; trigger = trigger' }
 
   let map_opt f = function
