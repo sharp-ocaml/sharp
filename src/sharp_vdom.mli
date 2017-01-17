@@ -46,135 +46,135 @@ val vdom_ : Dom_html.element Js.t -> (unit -> t) -> unit Network.t
 
 (* Helpers for specific elements *)
 module Element : sig
-  val a          : ?strategy:restart_strategy
+  val a          : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.anchorElement Js.t -> 'a Network.t) -> t
-  val area       : ?strategy:restart_strategy
+  val area       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.areaElement Js.t -> 'a Network.t) -> t
-  val article    : ?strategy:restart_strategy
+  val article    : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.element Js.t -> 'a Network.t) -> t
-  val base       : ?strategy:restart_strategy
+  val base       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.baseElement Js.t -> 'a Network.t) -> t
-  val blockquote : ?strategy:restart_strategy
+  val blockquote : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.quoteElement Js.t -> 'a Network.t) -> t
-  val body       : ?strategy:restart_strategy
+  val body       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.bodyElement Js.t -> 'a Network.t) -> t
-  val br         : ?strategy:restart_strategy
+  val br         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.brElement Js.t -> 'a Network.t) -> t
-  val button     : ?strategy:restart_strategy
+  val button     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.buttonElement Js.t -> 'a Network.t) -> t
-  val canvas     : ?strategy:restart_strategy
+  val canvas     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.canvasElement Js.t -> 'a Network.t) -> t
-  val caption    : ?strategy:restart_strategy
+  val caption    : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableCaptionElement Js.t -> 'a Network.t) -> t
-  val col        : ?strategy:restart_strategy
+  val col        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableColElement Js.t -> 'a Network.t) -> t
-  val colgroup   : ?strategy:restart_strategy
+  val colgroup   : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableColElement Js.t -> 'a Network.t) -> t
-  val del        : ?strategy:restart_strategy
+  val del        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.modElement Js.t -> 'a Network.t) -> t
-  val div        : ?strategy:restart_strategy
+  val div        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.divElement Js.t -> 'a Network.t) -> t
-  val dl         : ?strategy:restart_strategy
+  val dl         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.dListElement Js.t -> 'a Network.t) -> t
-  val fieldset   : ?strategy:restart_strategy
+  val fieldset   : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.fieldSetElement Js.t -> 'a Network.t) -> t
-  val embed      : ?strategy:restart_strategy
+  val embed      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.embedElement Js.t -> 'a Network.t) -> t
-  val form       : ?strategy:restart_strategy
+  val form       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.formElement Js.t -> 'a Network.t) -> t
-  val frameset   : ?strategy:restart_strategy
+  val frameset   : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.frameSetElement Js.t -> 'a Network.t) -> t
-  val frame      : ?strategy:restart_strategy
+  val frame      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.frameElement Js.t -> 'a Network.t) -> t
-  val h1         : ?strategy:restart_strategy
+  val h1         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
-  val h2         : ?strategy:restart_strategy
+  val h2         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
-  val h3         : ?strategy:restart_strategy
+  val h3         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
-  val h4         : ?strategy:restart_strategy
+  val h4         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
-  val h5         : ?strategy:restart_strategy
+  val h5         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
-  val h6         : ?strategy:restart_strategy
+  val h6         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.headingElement Js.t -> 'a Network.t) -> t
-  val header     : ?strategy:restart_strategy
+  val header     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.element Js.t -> 'a Network.t) -> t
-  val head       : ?strategy:restart_strategy
+  val head       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.headElement Js.t -> 'a Network.t) -> t
-  val hr         : ?strategy:restart_strategy
+  val hr         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.hrElement Js.t -> 'a Network.t) -> t
-  val html       : ?strategy:restart_strategy
+  val html       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.htmlElement Js.t -> 'a Network.t) -> t
-  val iframe     : ?strategy:restart_strategy
+  val iframe     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.iFrameElement Js.t -> 'a Network.t) -> t
-  val img        : ?strategy:restart_strategy
+  val img        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.imageElement Js.t -> 'a Network.t) -> t
-  val input      : ?strategy:restart_strategy
+  val input      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.inputElement Js.t -> 'a Network.t) -> t
-  val ins        : ?strategy:restart_strategy
+  val ins        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.modElement Js.t -> 'a Network.t) -> t
-  val label      : ?strategy:restart_strategy
+  val label      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.labelElement Js.t -> 'a Network.t) -> t
-  val legend     : ?strategy:restart_strategy
+  val legend     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.legendElement Js.t -> 'a Network.t) -> t
-  val li         : ?strategy:restart_strategy
+  val li         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.liElement Js.t -> 'a Network.t) -> t
-  val link       : ?strategy:restart_strategy
+  val link       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.linkElement Js.t -> 'a Network.t) -> t
-  val map        : ?strategy:restart_strategy
+  val map        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.mapElement Js.t -> 'a Network.t) -> t
-  val meta       : ?strategy:restart_strategy
+  val meta       : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.metaElement Js.t -> 'a Network.t) -> t
-  val nav        : ?strategy:restart_strategy
+  val nav        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.element Js.t -> 'a Network.t) -> t
-  val _object    : ?strategy:restart_strategy
+  val _object    : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.objectElement Js.t -> 'a Network.t) -> t
-  val ol         : ?strategy:restart_strategy
+  val ol         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.oListElement Js.t -> 'a Network.t) -> t
-  val optgroup   : ?strategy:restart_strategy
+  val optgroup   : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.optGroupElement Js.t -> 'a Network.t) -> t
-  val option     : ?strategy:restart_strategy
+  val option     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.optionElement Js.t -> 'a Network.t) -> t
-  val p          : ?strategy:restart_strategy
+  val p          : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.paramElement Js.t -> 'a Network.t) -> t
-  val param      : ?strategy:restart_strategy
+  val param      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.paramElement Js.t -> 'a Network.t) -> t
-  val pre        : ?strategy:restart_strategy
+  val pre        : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.preElement Js.t -> 'a Network.t) -> t
-  val q          : ?strategy:restart_strategy
+  val q          : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.quoteElement Js.t -> 'a Network.t) -> t
-  val script     : ?strategy:restart_strategy
+  val script     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.scriptElement Js.t -> 'a Network.t) -> t
-  val section    : ?strategy:restart_strategy
+  val section    : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.element Js.t -> 'a Network.t) -> t
-  val select     : ?strategy:restart_strategy
+  val select     : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.selectElement Js.t -> 'a Network.t) -> t
-  val style      : ?strategy:restart_strategy
+  val style      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.styleElement Js.t -> 'a Network.t) -> t
-  val table      : ?strategy:restart_strategy
+  val table      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableElement Js.t -> 'a Network.t) -> t
-  val tbody      : ?strategy:restart_strategy
+  val tbody      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableSectionElement Js.t -> 'a Network.t) -> t
-  val td         : ?strategy:restart_strategy
+  val td         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableCellElement Js.t -> 'a Network.t) -> t
-  val textarea   : ?strategy:restart_strategy
+  val textarea   : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.textAreaElement Js.t -> 'a Network.t) -> t
-  val tfoot      : ?strategy:restart_strategy
+  val tfoot      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableSectionElement Js.t -> 'a Network.t) -> t
-  val th         : ?strategy:restart_strategy
+  val th         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableCellElement Js.t -> 'a Network.t) -> t
-  val thead      : ?strategy:restart_strategy
+  val thead      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableSectionElement Js.t -> 'a Network.t) -> t
-  val title      : ?strategy:restart_strategy
+  val title      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.titleElement Js.t -> 'a Network.t) -> t
-  val tr         : ?strategy:restart_strategy
+  val tr         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.tableRowElement Js.t -> 'a Network.t) -> t
-  val ul         : ?strategy:restart_strategy
+  val ul         : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.uListElement Js.t -> 'a Network.t) -> t
-  val audio      : ?strategy:restart_strategy
+  val audio      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.audioElement Js.t -> 'a Network.t) -> t
-  val video      : ?strategy:restart_strategy
+  val video      : ?strategy:restart_strategy -> ?id_opt:string
                    -> (Dom_html.videoElement Js.t -> 'a Network.t) -> t
 end
 
