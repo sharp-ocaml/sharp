@@ -10,11 +10,12 @@ module Linked : sig
 end
 
 val node    : ?network:(Dom_html.element Js.t -> unit Network.t)
-              -> ?strategy:restart_strategy -> string -> t list -> t
+              -> ?strategy:restart_strategy -> ?id_opt:string -> string
+              -> t list -> t
 val element : ?network:(Dom_html.element Js.t -> unit Network.t)
-              -> ?strategy:restart_strategy-> string -> t
+              -> ?strategy:restart_strategy-> ?id_opt: string -> string -> t
 val tag     : ?network:(Dom_html.element Js.t -> unit Network.t)
-              -> ?strategy:restart_strategy -> string -> t
+              -> ?strategy:restart_strategy -> ?id_opt: string -> string -> t
 val text    : ?network:(Dom.text Js.t -> unit Network.t)
               -> ?strategy:restart_strategy -> string -> t
 

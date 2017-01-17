@@ -16,38 +16,31 @@ end
 
 module Generic (E : Extra) = struct
   type t =
-    | Node of string * attributes * t list * restart_strategy * element Js.t E.t
+    | Node of string * string option * attributes * t list * restart_strategy
+              * element Js.t E.t
     | Text of string * restart_strategy * text Js.t E.t
 
   let append_child child parent = match parent with
-    | Node (name, attrs, children, strategy, extra) ->
-       Node (name, attrs, children @ [child], strategy, extra)
+    | Node (name, id_opt, attrs, children, strategy, extra) ->
+       Node (name, id_opt, attrs, children @ [child], strategy, extra)
     | Text _ as t -> t
 
   let prepend_child child parent = match parent with
-    | Node (name, attrs, children, strategy, extra) ->
-       Node (name, attrs, child :: children, strategy, extra)
+    | Node (name, id_opt, attrs, children, strategy, extra) ->
+       Node (name, id_opt, attrs, child :: children, strategy, extra)
     | Text _ as t -> t
 
   let set_attribute attr_name attr_value = function
-    | Node (name, attrs, children, strategy, extra) ->
+    | Node (name, id_opt, attrs, children, strategy, extra) ->
        let attrs' = (attr_name, attr_value) :: List.remove_assoc name attrs in
-       Node (name, attrs', children, strategy, extra)
+       Node (name, id_opt, attrs', children, strategy, extra)
     | Text _ as t -> t
 
   let clear_attribute name = function
-    | Node (name, attrs, children, strategy, extra) ->
+    | Node (name, id_opt, attrs, children, strategy, extra) ->
        let attrs' = List.remove_assoc name attrs in
-       Node (name, attrs', children, strategy, extra)
+       Node (name, id_opt, attrs', children, strategy, extra)
     | Text _ as t -> t
-
-  let eq vdom vdom' = match vdom, vdom' with
-    | Node (name, attrs, _, strategy, _),
-      Node (name', attrs', _, strategy', _) ->
-       name = name' && attrs = attrs' && strategy = strategy'
-    | Text (t, strategy, _), Text (t', strategy', _) ->
-       t = t' && strategy = strategy'
-    | _, _ -> false
 
   let ( |- ) parent child = parent |> append_child child
   let rec ( |+ ) parent = function
@@ -71,13 +64,14 @@ end
 module Linked = Generic(LinkedExtra)
 include Generic(Raw)
 
-let node ?network ?(strategy=OnDeepChange) name children =
+let node ?network ?(strategy=OnDeepChange) ?id_opt name children =
   let f = match network with
     | None     -> Raw.empty
     | Some net -> fun node -> Network.start (net node)
   in
-  Node (name, [], children, strategy, f)
-let element ?network ?strategy name = node ?network ?strategy name []
+  Node (name, id_opt, [], children, strategy, f)
+let element ?network ?strategy ?id_opt name =
+  node ?network ?strategy ?id_opt name []
 let tag = element
 let text ?network ?(strategy=OnDeepChange) content =
   let f = match network with
@@ -114,7 +108,7 @@ let insert_in_real_dom ?current parent node =
     | Some n -> replaceChild parent node n
 
 let rec link ?current parent vdom = match vdom with
-  | Node (name, attrs, children, strategy, start) ->
+  | Node (name, id_opt, attrs, children, strategy, start) ->
      let node = create_node name attrs in
      let _ = insert_in_real_dom ?current parent node in
 
@@ -124,7 +118,8 @@ let rec link ?current parent vdom = match vdom with
      (* children created before initialisation *)
      let (flush, stop, callback) = make_callback_functions start node in
      let linked_node =
-       Linked.Node (name, attrs, children', strategy, (node, flush, stop))
+       Linked.Node (name, id_opt, attrs, children', strategy,
+                    (node, flush, stop))
      in
      (linked_node, fun t -> subcallback t; callback t)
 
@@ -135,7 +130,7 @@ let rec link ?current parent vdom = match vdom with
      (Linked.Text (str, strategy, (node, flush, stop)), callback)
 
 let rec unlink vdom = match vdom with
-  | Linked.Node (_, _, children, _, (node, _, stop)) ->
+  | Linked.Node (_, _, _, children, _, (node, _, stop)) ->
      let substops  = List.map unlink children in
      let substop t = List.iter (fun f -> f t) substops in
      Js.Opt.iter (node##.parentNode)
@@ -192,9 +187,10 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
      let callback = unlink vdom in (None, callback, true)
   | None, None -> assert false
 
-  | Some (Linked.Node (name, attrs, children, strategy, (node, flush, stop))),
-    Some (Node (name', attrs', children', strategy', start))
-       when name = name' ->
+  | Some (Linked.Node (name, id_opt, attrs, children, strategy,
+                       (node, flush, stop))),
+    Some (Node (name', id_opt', attrs', children', strategy', start))
+       when name = name' && id_opt = id_opt' ->
      let node_changed = update_attributes node attrs attrs' in
      let (children'', subcallbacks, children_changed) =
        fold_left2_opt ([], [], false) children children'
@@ -226,7 +222,7 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
             (flush, stop, fun t -> subcallback t; callback t)
        else (flush, stop, fun t -> subcallback t; flush t)
      in
-     let linked_node = Linked.Node (name, attrs', children'', strategy',
+     let linked_node = Linked.Node (name, id_opt, attrs', children'', strategy',
                                     (node, flush', stop')) in
 
      (Some linked_node, full_callback, changed)
