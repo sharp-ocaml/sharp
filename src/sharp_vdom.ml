@@ -21,25 +21,25 @@ module Generic (E : Extra) = struct
     | Text of string * restart_strategy * text Js.t E.t
 
   let append_child child parent = match parent with
-    | Node (name, id_opt, attrs, children, strategy, extra) ->
-       Node (name, id_opt, attrs, children @ [child], strategy, extra)
+    | Node (name, id, attrs, children, strategy, extra) ->
+       Node (name, id, attrs, children @ [child], strategy, extra)
     | Text _ as t -> t
 
   let prepend_child child parent = match parent with
-    | Node (name, id_opt, attrs, children, strategy, extra) ->
-       Node (name, id_opt, attrs, child :: children, strategy, extra)
+    | Node (name, id, attrs, children, strategy, extra) ->
+       Node (name, id, attrs, child :: children, strategy, extra)
     | Text _ as t -> t
 
   let set_attribute attr_name attr_value = function
-    | Node (name, id_opt, attrs, children, strategy, extra) ->
+    | Node (name, id, attrs, children, strategy, extra) ->
        let attrs' = (attr_name, attr_value) :: List.remove_assoc name attrs in
-       Node (name, id_opt, attrs', children, strategy, extra)
+       Node (name, id, attrs', children, strategy, extra)
     | Text _ as t -> t
 
   let clear_attribute name = function
-    | Node (name, id_opt, attrs, children, strategy, extra) ->
+    | Node (name, id, attrs, children, strategy, extra) ->
        let attrs' = List.remove_assoc name attrs in
-       Node (name, id_opt, attrs', children, strategy, extra)
+       Node (name, id, attrs', children, strategy, extra)
     | Text _ as t -> t
 
   let ( |- ) parent child = parent |> append_child child
@@ -64,14 +64,14 @@ end
 module Linked = Generic(LinkedExtra)
 include Generic(Raw)
 
-let node ?network ?(strategy=OnDeepChange) ?id_opt name children =
+let node ?network ?(strategy=OnDeepChange) ?id name children =
   let f = match network with
     | None     -> Raw.empty
     | Some net -> fun node -> Network.start (net node)
   in
-  Node (name, id_opt, [], children, strategy, f)
-let element ?network ?strategy ?id_opt name =
-  node ?network ?strategy ?id_opt name []
+  Node (name, id, [], children, strategy, f)
+let element ?network ?strategy ?id name =
+  node ?network ?strategy ?id name []
 let tag = element
 let text ?network ?(strategy=OnDeepChange) content =
   let f = match network with
@@ -108,7 +108,7 @@ let insert_in_real_dom ?current parent node =
     | Some n -> replaceChild parent node n
 
 let rec link ?current parent vdom = match vdom with
-  | Node (name, id_opt, attrs, children, strategy, start) ->
+  | Node (name, id, attrs, children, strategy, start) ->
      let node = create_node name attrs in
      let _ = insert_in_real_dom ?current parent node in
 
@@ -118,7 +118,7 @@ let rec link ?current parent vdom = match vdom with
      (* children created before initialisation *)
      let (flush, stop, callback) = make_callback_functions start node in
      let linked_node =
-       Linked.Node (name, id_opt, attrs, children', strategy,
+       Linked.Node (name, id, attrs, children', strategy,
                     (node, flush, stop))
      in
      (linked_node, fun t -> subcallback t; callback t)
@@ -187,10 +187,10 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
      let callback = unlink vdom in (None, callback, true)
   | None, None -> assert false
 
-  | Some (Linked.Node (name, id_opt, attrs, children, strategy,
+  | Some (Linked.Node (name, id, attrs, children, strategy,
                        (node, flush, stop))),
-    Some (Node (name', id_opt', attrs', children', strategy', start))
-       when name = name' && id_opt = id_opt' ->
+    Some (Node (name', id', attrs', children', strategy', start))
+       when name = name' && id = id' ->
      let node_changed = update_attributes node attrs attrs' in
      let (children'', subcallbacks, children_changed) =
        fold_left2_opt ([], [], false) children children'
@@ -222,7 +222,7 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
             (flush, stop, fun t -> subcallback t; callback t)
        else (flush, stop, fun t -> subcallback t; flush t)
      in
-     let linked_node = Linked.Node (name, id_opt, attrs', children'', strategy',
+     let linked_node = Linked.Node (name, id, attrs', children'', strategy',
                                     (node, flush', stop')) in
 
      (Some linked_node, full_callback, changed)
@@ -290,380 +290,380 @@ let vdom_ parent f = vdom parent (Behaviour.pure ()) f
 
 (* Helpers for specific elements *)
 module Element = struct
-  let a ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let a ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.a node)
                           (fun () -> assert false) network
             ) "a"
 
-  let area ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let area ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.area node)
                           (fun () -> assert false) network
             ) "area"
 
-  let article ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network "article"
+  let article ?strategy ?id network =
+    element ?strategy ?id ~network "article"
 
-  let base ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let base ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.base node)
                           (fun () -> assert false) network
             ) "base"
 
-  let blockquote ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let blockquote ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.blockquote node)
                           (fun () -> assert false) network
             ) "blockquote"
 
-  let body ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let body ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.body node)
                           (fun () -> assert false) network
             ) "body"
 
-  let br ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let br ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.br node)
                           (fun () -> assert false) network
             ) "br"
 
-  let button ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let button ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.button node)
                           (fun () -> assert false) network
             ) "button"
 
-  let canvas ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let canvas ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.canvas node)
                           (fun () -> assert false) network
             ) "canvas"
 
-  let caption ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let caption ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.caption node)
                           (fun () -> assert false) network
             ) "caption"
 
-  let col ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let col ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.col node)
                           (fun () -> assert false) network
             ) "col"
 
-  let colgroup ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let colgroup ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.colgroup node)
                           (fun () -> assert false) network
             ) "colgroup"
 
-  let del ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let del ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.del node)
                           (fun () -> assert false) network
             ) "del"
 
-  let div ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let div ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.div node)
                           (fun () -> assert false) network
             ) "div"
 
-  let dl ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let dl ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.dl node)
                           (fun () -> assert false) network
             ) "dl"
 
-  let fieldset ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let fieldset ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.fieldset node)
                           (fun () -> assert false) network
             ) "fieldset"
 
-  let embed ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let embed ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.embed node)
                           (fun () -> assert false) network
             ) "embed"
 
-  let form ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let form ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.form node)
                           (fun () -> assert false) network
             ) "form"
 
-  let frameset ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let frameset ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.frameset node)
                           (fun () -> assert false) network
             ) "frameset"
 
-  let frame ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let frame ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.frame node)
                           (fun () -> assert false) network
             ) "frame"
 
-  let h1 ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let h1 ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.h1 node)
                           (fun () -> assert false) network
             ) "h1"
 
-  let h2 ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let h2 ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.h2 node)
                           (fun () -> assert false) network
             ) "h2"
 
-  let h3 ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let h3 ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.h3 node)
                           (fun () -> assert false) network
             ) "h3"
 
-  let h4 ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let h4 ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.h4 node)
                           (fun () -> assert false) network
             ) "h4"
 
-  let h5 ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let h5 ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.h5 node)
                           (fun () -> assert false) network
             ) "h5"
 
-  let h6 ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let h6 ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.h6 node)
                           (fun () -> assert false) network
             ) "h6"
 
-  let head ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let head ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.head node)
                           (fun () -> assert false) network
             ) "head"
 
-  let header ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network "header"
+  let header ?strategy ?id network =
+    element ?strategy ?id ~network "header"
 
-  let hr ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let hr ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.hr node)
                           (fun () -> assert false) network
             ) "hr"
 
-  let html ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let html ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.html node)
                           (fun () -> assert false) network
             ) "html"
 
-  let iframe ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let iframe ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.iframe node)
                           (fun () -> assert false) network
             ) "iframe"
 
-  let img ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let img ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.img node)
                           (fun () -> assert false) network
             ) "img"
 
-  let input ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let input ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.input node)
                           (fun () -> assert false) network
             ) "input"
 
-  let ins ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let ins ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.ins node)
                           (fun () -> assert false) network
             ) "ins"
 
-  let label ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let label ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.label node)
                           (fun () -> assert false) network
             ) "label"
 
-  let legend ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let legend ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.legend node)
                           (fun () -> assert false) network
             ) "legend"
 
-  let li ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let li ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.li node)
                           (fun () -> assert false) network
             ) "li"
 
-  let link ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let link ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.link node)
                           (fun () -> assert false) network
             ) "link"
 
-  let map ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let map ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.map node)
                           (fun () -> assert false) network
             ) "map"
 
-  let meta ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let meta ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.meta node)
                           (fun () -> assert false) network
             ) "meta"
 
-  let nav ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network "nav"
+  let nav ?strategy ?id network =
+    element ?strategy ?id ~network "nav"
 
-  let _object ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let _object ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo._object node)
                           (fun () -> assert false) network
             ) "object"
 
-  let ol ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let ol ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.ol node)
                           (fun () -> assert false) network
             ) "ol"
 
-  let optgroup ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let optgroup ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.optgroup node)
                           (fun () -> assert false) network
             ) "optgroup"
 
-  let option ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let option ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.option node)
                           (fun () -> assert false) network
             ) "option"
 
-  let p ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let p ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.p node)
                           (fun () -> assert false) network
             ) "p"
 
-  let param ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let param ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.param node)
                           (fun () -> assert false) network
             ) "param"
 
-  let pre ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let pre ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.pre node)
                           (fun () -> assert false) network
             ) "pre"
 
-  let q ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let q ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.q node)
                           (fun () -> assert false) network
             ) "q"
 
-  let script ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let script ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.script node)
                           (fun () -> assert false) network
             ) "script"
 
-  let section ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network "section"
+  let section ?strategy ?id network =
+    element ?strategy ?id ~network "section"
 
-  let select ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let select ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.select node)
                           (fun () -> assert false) network
             ) "select"
 
-  let style ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let style ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.style node)
                           (fun () -> assert false) network
             ) "style"
 
-  let table ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let table ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.table node)
                           (fun () -> assert false) network
             ) "table"
 
-  let tbody ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let tbody ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.tbody node)
                           (fun () -> assert false) network
             ) "tbody"
 
-  let td ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let td ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.td node)
                           (fun () -> assert false) network
             ) "td"
 
-  let textarea ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let textarea ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.textarea node)
                           (fun () -> assert false) network
             ) "textarea"
 
-  let tfoot ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let tfoot ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.tfoot node)
                           (fun () -> assert false) network
             ) "tfoot"
 
-  let th ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let th ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.th node)
                           (fun () -> assert false) network
             ) "th"
 
-  let thead ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let thead ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.thead node)
                           (fun () -> assert false) network
             ) "thead"
 
-  let title ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let title ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.title node)
                           (fun () -> assert false) network
             ) "title"
 
-  let tr ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let tr ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.tr node)
                           (fun () -> assert false) network
             ) "tr"
 
-  let ul ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let ul ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.ul node)
                           (fun () -> assert false) network
             ) "ul"
 
-  let audio ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let audio ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.audio node)
                           (fun () -> assert false) network
             ) "audio"
 
-  let video ?strategy ?id_opt network =
-    element ?strategy ?id_opt ~network:(fun node ->
+  let video ?strategy ?id network =
+    element ?strategy ?id ~network:(fun node ->
               Js.Opt.case (Dom_html.CoerceTo.video node)
                           (fun () -> assert false) network
             ) "video"
