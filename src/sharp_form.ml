@@ -13,7 +13,7 @@ let get_value el = Js.to_string el##.value
 
 let text_field el =
   let open Network.Infix in
-  input get_value el >>= fun ev ->
+  input (fun _ _ -> Some (get_value el)) el >>= fun ev ->
   return (last ~init:(get_value el) ev)
 
 class type validity =
@@ -27,7 +27,7 @@ class type validElement =
     method validationMessage : Js.js_string Js.t Js.readonly_prop
   end
 
-let get_dom_error el =
+let get_dom_error el _ =
   let el' = Js.Unsafe.coerce el in
   if el'##.validity##.valid then None else Some (el'##.validationMessage)
 

@@ -38,9 +38,9 @@ let from_parts parts =
   let path     = List.fold_right (fun s acc -> s ^ "/" ^ acc) encparts "" in
   "/" ^ path
 
-let push_state title path =
-  Dom_html.window##.history##pushState () (Js.string title)
-                                       (Js.some (Js.string path))
+let replace_state title path =
+  Dom_html.window##.history##replaceState () (Js.string title)
+                                          (Js.some (Js.string path))
 
 let rec search_routes routes parts = match routes with
   | [] -> None
@@ -50,32 +50,47 @@ let rec search_routes routes parts = match routes with
      | None -> search_routes routes' parts
 
 let router ?(base_path="") b routes =
+  let get_parts_from_hash () =
+    let hash = Dom_html.window##.location##.hash in
+    to_parts (Js.to_string hash)
+  and get_parts_from_path () =
+    to_parts (Js.to_string Dom_html.window##.location##.pathname)
+  in
+
   let open Network.Infix in
-  hashchange ~prevent_default:false (fun _ ->
-               let hash = Dom_html.window##.location##.hash in
-               to_parts (Js.to_string hash)
-             ) >>= fun path ->
+  hashchange ~prevent_default:false
+             (fun _ _ -> Some (get_parts_from_hash ())) >>= fun path1 ->
+  popstate ~prevent_default:false (fun _ ev ->
+             if Js.Unsafe.fun_call
+                  (Js.Unsafe.js_expr "function(s) { return s == null; }")
+                  [|ev##.state|]
+             then None
+             else Some (get_parts_from_path ())
+           ) >>= fun path2 ->
+  event () >>= fun path3 ->
   (last ~init:(fun t  -> ()) <$> event ()) >>= fun flush ->
   (last ~init:(fun () -> ()) <$> event ()) >>= fun stop  ->
 
   let open Behaviour.Infix in
-  let dat = (fun x y -> (x, y)) <$> stop <*> b in
+  let path = (fun xopt yopt zopt -> match xopt, yopt with
+                                    | Some _, _ -> xopt
+                                    | _, Some _  -> yopt
+                                    | _ -> zopt)
+             <$> path1 <*> path2 <*> path3
+  and dat = (fun x y -> (x, y)) <$> stop <*> b in
 
   let open Network.Infix in
   initially (fun _ ->
       let hash = Js.to_string Dom_html.window##.location##.hash in
       let get_parts_from_hash () = to_parts hash in
-      let get_parts_from_path () =
-        to_parts (Js.to_string Dom_html.window##.location##.pathname)
-      in
       if hash = ""
-      then let _ = trigger path (get_parts_from_path ()) in ()
+      then let _ = trigger path3 (get_parts_from_path ()) in ()
       else
         let parts_from_hash = get_parts_from_hash () in
         let parts = match search_routes routes parts_from_hash with
           | Some _ -> parts_from_hash
           | None   -> get_parts_from_path ()
-        in let _ = trigger path parts in ()
+        in let _ = trigger path3 parts in ()
     )
 
   >> perform (let open Behaviour.Infix in
@@ -89,7 +104,7 @@ let router ?(base_path="") b routes =
              | None -> ()
              | Some net ->
                 let str = from_parts parts in
-                push_state str (base_path ^ str);
+                replace_state str (base_path ^ str);
                 stop_ ();
                 let manager = Network.start (net x) in
                 let _ = trigger flush (Network.flush manager) in

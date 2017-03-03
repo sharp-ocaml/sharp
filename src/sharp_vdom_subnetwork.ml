@@ -12,7 +12,7 @@ let click ?prevent_default event get_value node =
 
 let input event get_value node =
   let open Network.Infix in
-  Sharp_event.input get_value node >>= fun event' ->
+  Sharp_event.input (fun el _ -> Some (get_value el)) node >>= fun event' ->
   react event' (Behaviour.pure ()) (fun x _ ->
           let _ = trigger event x in ()
         )
