@@ -68,7 +68,7 @@ let rec plan_next_tick now tidref sref event =
                     tidref := None;
                     plan_next_tick (Sys.time ()) tidref sref event;
                     let v = extract_value spec in
-                    let _ = Behaviour.trigger event v in ()
+                    let _ = Signal.trigger event v in ()
                   ) (1000. *. diff)
      in tidref := Some tid
 
@@ -91,22 +91,25 @@ let tick_manager commands =
   in
   Network.event ~connect () >>= fun command_event ->
 
-  Network.react command_event Behaviour.time (fun cmd t ->
+  Network.react command_event Signal.time (fun cmd t ->
                   interrupt tidref;
                   sref := add_to_specs (!sref) (command_to_spec t cmd);
                   plan_next_tick t tidref sref tick_event
                 )
-  >> return (Behaviour.combine tick_event command_event)
+  >> return (Signal.combine command_event tick_event)
 
 let every diff value =
-  Network.map ~f:Behaviour.no_trigger (tick_manager [Every (value, diff)])
+  Network.map ~f:Signal.no_trigger (tick_manager [Every (value, diff)])
 
-let last_for diff { Behaviour.behaviour; trigger } =
-  let rec f b current now =
-    let (opt, b') = Behaviour.at b now in
+let last_for diff ({ Signal.timed_value; trigger } as s) =
+  let open Signal in
+  let rec f s current now =
+    let (opt, s') = at s now in
     match opt, current with
     | None, Some (x, past) when past +. diff >= now ->
-       (Some x, Behaviour.B (f b' current))
-    | None, _ -> (None, Behaviour.B (f b' None))
-    | Some x, _ -> (Some x, Behaviour.B (f b' (Some (x, now))))
-  in { Behaviour.behaviour = Behaviour.B (f behaviour None); trigger }
+       (Some x, Signal.TV (f s' current))
+    | None, _ -> (None, Signal.TV (f s' None))
+    | Some x, _ -> (Some x, Signal.TV (f s' (Some (x, now))))
+  in
+  let timed_value = TV (f s None) in
+  { s with timed_value }

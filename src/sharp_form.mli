@@ -1,3 +1,4 @@
+open Sharp_category
 open Sharp_core
 
 class type field = object
@@ -5,8 +6,8 @@ class type field = object
   method value : Js.js_string Js.t Js.prop
 end
 
-val text_field : #field Js.t -> (string, string) Behaviour.t Network.t
+val text_field : #field Js.t -> (string, string) Signal.t Network.t
 
 val with_dom_error :
-  ((#Dom_html.element as 'a) Js.t -> ('b, 'c) Behaviour.t Network.t)
-  -> 'a Js.t -> (('b, string) result, 'd) Behaviour.t Network.t
+  ((#Dom_html.element as 'a) Js.t -> ('b, 'c) Signal.t Network.t)
+  -> 'a Js.t -> ('b, ('c, string) result) Signal.t Network.t

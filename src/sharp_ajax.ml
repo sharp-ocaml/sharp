@@ -14,38 +14,32 @@ let diff_receiver () =
   <$> Network.event () <*> Network.event ()
 
 let plug_lwt event value_lwt =
-  Lwt.on_success value_lwt (fun value ->
-                   let _ = Behaviour.trigger event value in ()
-                 )
+  Lwt.on_success value_lwt (Signal.trigger event)
 
 let plug_lwt_result event value_lwt =
-  Lwt.on_any value_lwt (fun value ->
-               let _ = Behaviour.trigger event (Ok value) in ()
-             ) (fun exn ->
-               let _ = Behaviour.trigger event (Error exn) in ()
-             )
+  Lwt.on_any value_lwt (fun value -> Signal.trigger event (Ok value))
+                       (fun exn   -> Signal.trigger event (Error exn))
 
 let plug_frame = plug_lwt
 
 let plug_success event frame_lwt =
   Lwt.on_success frame_lwt (fun { code; content } ->
-                   let _ = if code >= 200 && code < 300
-                           then Behaviour.trigger event content
-                           else None
-                   in ()
+                   if code >= 200 && code < 300
+                   then Signal.trigger event content
+                   else ()
                  )
 
 let _helper success_event failure_event frame_lwt =
   Lwt.on_any frame_lwt (fun ({ code; content } as frame) ->
-               let _ = if code >= 200 && code < 300
-                       then Behaviour.trigger success_event content
-                       else Behaviour.trigger failure_event (HTTPFailure frame)
-               in ()
-             ) (fun exn -> let _ = Behaviour.trigger failure_event exn in ())
+               if code >= 200 && code < 300
+               then Signal.trigger success_event content
+               else Signal.trigger failure_event (HTTPFailure frame)
+             ) (Signal.trigger failure_event)
 
 let plug_result event frame_lwt =
-  let failure_event = Behaviour.contramap ~f:(fun err -> Error err) event in
-  let success_event = Behaviour.contramap ~f:(fun res -> Ok    res) event in
+  let failure_event = Signal.contramap ~f:(fun err -> Error err) event in
+  let success_event = Signal.contramap ~f:(fun res -> Ok    res) event in
   _helper success_event failure_event frame_lwt
+
 let plug_diff success_event failure_event frame_lwt =
   _helper success_event failure_event frame_lwt

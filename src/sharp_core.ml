@@ -37,111 +37,115 @@ module Event = struct
        | Some es' -> after es' t
 end
 
-module type Behaviour_base_S = sig
-  type 'a behaviour = B of (time -> 'a * 'a behaviour)
-  type 'a event_trigger = 'a -> time
+module type Signal_base_S = sig
+  type 'a timed_value   = TV of (time -> 'a * 'a timed_value)
+  type 'a event_trigger = 'a -> time option
 
   type ('a, 'b) t =
-    { behaviour : 'a behaviour
-    ; trigger   : 'b event_trigger option
+    { trigger     : 'a event_trigger
+    ; timed_value : 'b timed_value
     }
 
-  type 'a event = ('a option, 'a) t
+  type 'a event = ('a, 'a option) t
 
-  val at : 'a behaviour -> time -> 'a * 'a behaviour
+  val at : ('a, 'b) t  -> time -> 'b * ('a, 'b) t
 
-  val time : (time, 'a) t
+  val time : (void, time) t
 
-  val no_trigger : ('a, 'b) t -> ('a, 'c) t
+  val no_trigger : ('a, 'b) t -> (void, 'b) t
 
-  val map : ('a, 'b) t -> f:('a -> 'c) -> ('c, 'b) t
-  val pure : 'a -> ('a, 'b) t
-  val apply : ('a -> 'b, 'c) t -> ('a, 'd) t -> ('b, 'e) t
-  val join : (('a, 'b) t, 'c) t -> ('a, 'd) t
+  val map : ('a, 'b) t -> f:('b -> 'c) -> ('a, 'c) t
+  val pure : 'a -> (void, 'a) t
+  val apply : ('a, 'b -> 'c) t -> ('d, 'b) t -> (void, 'c) t
+  val join : ('a, ('b, 'c) t) t -> (void, 'c) t
 
-  val contramap : ('a, 'b) t -> f:('c -> 'b) -> ('a, 'c) t
-  val contramap_opt : ('a, 'b) t -> f:('c -> 'b option) -> ('a, 'c) t
+  val contramap : ('a, 'b) t -> f:('c -> 'a) -> ('c, 'b) t
+  val contramap_opt : ('a, 'b) t -> f:('c -> 'a option) -> ('c, 'b) t
 
-  val ( <$?> ) : ('a -> 'b) -> ('a option, 'c) t -> ('b option, 'c) t
+  val ( <$?> ) : ('a -> 'b) -> ('c, 'a option) t -> ('c, 'b option) t
   val ( <*?> ) :
-    (('a -> 'b) option, 'c) t -> ('a option, 'd) t -> ('b option, 'e) t
+    ('a, ('b -> 'c) option) t -> ('d, 'b option) t -> (void, 'c option) t
 
-  val event : unit -> ('a option, 'a) t
-  val trigger : ('a, 'b) t -> 'b -> time option
+  val event : unit -> 'a event
+  val trigger : ('a, 'b) t -> 'a -> unit
+  val trigger' : ('a, 'b) t -> 'a -> time option
 
   val combine : ('a, 'b) t -> ('c, 'd) t -> ('a, 'd) t
 
-  val on : ('a option, 'b) t -> init:'c -> f:('c -> 'a -> 'c) -> ('c, 'b) t
-  val last : ('a option, 'b) t -> init:'a -> ('a, 'b) t
-  val toggle : ('a option, 'b) t -> init:bool -> (bool, 'b) t
-  val count : ?init:int -> ('a option, 'b) t -> (int, 'b) t
-  val upon : ?init:'a -> ('b option, 'c) t -> ('a, 'd) t -> ('a, 'c) t
+  val on : ('a, 'b option) t -> init:'c -> f:('c -> 'b -> 'c) -> ('a, 'c) t
+  val last : ('a, 'b option) t -> init:'b -> ('a, 'b) t
+  val toggle : ('a, 'b option) t -> init:bool -> ('a, bool) t
+  val count : ?init:int -> ('a, 'b option) t -> ('a, int) t
+  val upon : ?init:'a -> ('b, 'c option) t -> ('d, 'a) t -> (void, 'a) t
 
-  val fold : ('a -> 'b -> 'a) -> 'a -> ('b, 'c) t -> ('a, 'd) t
+  val fold : ('c, 'b) t -> f:('a -> 'b -> 'a) -> init:'a -> ('c, 'a) t
 end
 
-module Behaviour_base : Behaviour_base_S = struct
-  type 'a behaviour = B of (time -> 'a * 'a behaviour)
-  type 'a event_trigger = 'a -> time
+module Signal_base : Signal_base_S = struct
+  type 'a timed_value   = TV of (time -> 'a * 'a timed_value)
+  type 'a event_trigger = 'a -> time option
 
   type ('a, 'b) t =
-    { behaviour : 'a behaviour
-    ; trigger   : 'b event_trigger option
+    { trigger     : 'a event_trigger
+    ; timed_value : 'b timed_value
     }
 
-  type 'a event = ('a option, 'a) t
+  type 'a event = ('a, 'a option) t
 
-  let at (B f) t = f t
+  let at { timed_value = TV f; trigger } t =
+    let (x, timed_value) = f t in
+    (x, { timed_value; trigger })
+
+  let void_trigger Void = None
 
   let time =
-    let rec b = B (fun t -> (t, b)) in { behaviour = b; trigger = None }
+    let rec timed_value = TV (fun t -> (t, timed_value)) in
+    { timed_value; trigger = void_trigger }
 
-  let no_trigger b = { b with trigger = None }
+  let no_trigger s = { s with trigger = void_trigger }
 
-  let rec mapb (B fa) ~f =
+  let rec maptv (TV fa) ~f =
     let fb t =
-      let (a, ba) = fa t in (f a, mapb ~f ba)
-    in B fb
+      let (a, ba) = fa t in (f a, maptv ~f ba)
+    in TV fb
 
-  let map { behaviour; trigger } ~f = { behaviour = mapb ~f behaviour; trigger }
+  let map { timed_value; trigger } ~f =
+    { timed_value = maptv ~f timed_value; trigger }
 
   let pure a =
-    let rec b = B (fun _ -> (a, b)) in { behaviour = b; trigger = None }
+    let rec timed_value = TV (fun _ -> (a, timed_value)) in
+    { timed_value; trigger = void_trigger }
 
-  let rec applyb (B bf) (B ba) =
+  let rec applytv (TV tvf) (TV tva) =
     let g t =
-      let (f, bf') = bf t in
-      let (a, ba') = ba t in
-      (f a, applyb bf' ba')
-    in B g
+      let (f, bf') = tvf t in
+      let (a, ba') = tva t in
+      (f a, applytv bf' ba')
+    in TV g
 
-  let apply { behaviour; trigger }
-            { behaviour = behaviour'; trigger = trigger' } =
-    { behaviour = applyb behaviour behaviour'; trigger = None }
+  let apply { timed_value } { timed_value = timed_value' } =
+    { timed_value = applytv timed_value timed_value'
+    ; trigger     = void_trigger
+    }
 
-  let rec joinb (B fba) =
+  let rec jointv (TV ftva) =
     let f' t =
-      let ({ behaviour = B fa }, bba) = fba t in
+      let ({ timed_value = TV fa }, tvtva) = ftva t in
       let (a, _) = fa t in
-      (a, joinb bba)
-    in B f'
+      (a, jointv tvtva)
+    in TV f'
 
-  let join { behaviour; trigger } =
-    { behaviour = joinb behaviour; trigger = None }
+  let join { timed_value } =
+    { timed_value = jointv timed_value; trigger = void_trigger }
 
-  let contramap { behaviour; trigger } ~f =
-    let trigger' = match trigger with
-      | None   -> None
-      | Some g -> Some (fun x -> g (f x))
-    in { behaviour; trigger = trigger' }
+  let contramap { timed_value; trigger } ~f =
+    { timed_value; trigger = (fun x -> trigger (f x)) }
 
-  let contramap_opt { behaviour; trigger } ~f =
-    let trigger' = match trigger with
-      | None   -> None
-      | Some g -> Some (fun x -> match f x with
-                                 | Some y -> g y
-                                 | none -> Sys.time ())
-    in { behaviour; trigger = trigger' }
+  let contramap_opt { timed_value; trigger } ~f =
+    let trigger' x = match f x with
+      | None -> None
+      | Some y -> trigger y
+    in { timed_value; trigger = trigger' }
 
   let map_opt f = function
     | None   -> None
@@ -156,81 +160,80 @@ module Behaviour_base : Behaviour_base_S = struct
 
   let event () =
     let module E = Event in
-    let rec b ev =
+    let rec tv ev =
       let f t =
         let x   = E.at    ev t in
         let ev' = E.after ev t in
-        (x, b ev')
-      in B f
+        (x, tv ev')
+      in TV f
     in
     let ev = E.create () in
     let tipref = ref ev in
     let add x =
       let (t, tip') = E.add !tipref (Sys.time ()) x in
-      tipref := tip'; t
+      tipref := tip'; Some t
     in
-    { behaviour = b ev; trigger = Some add }
+    { timed_value = tv ev; trigger = add }
 
-  let trigger { trigger } x = match trigger with
-    | None   -> None
-    | Some f -> Some (f x)
+  let trigger { trigger } x = let _ = trigger x in ()
+  let trigger' { trigger } = trigger
 
-  let combine { behaviour } { trigger } = { behaviour; trigger }
+  let combine { trigger } { timed_value } = { timed_value; trigger }
 
-  let rec onb (B fa) ~init ~f =
+  let rec ontv (TV fa) ~init ~f =
     let f' t =
       match fa t with
-      | (None,   b) -> (init, onb ~init ~f b)
-      | (Some a, b) ->
-         let init' = f init a in (init',  onb ~init:init' ~f b)
-    in B f'
+      | (None,   tv) -> (init, ontv ~init ~f tv)
+      | (Some a, tv) ->
+         let init' = f init a in (init', ontv ~init:init' ~f tv)
+    in TV f'
 
-  let on { behaviour; trigger} ~init ~f =
-    { behaviour = onb behaviour ~init ~f; trigger }
+  let on { timed_value; trigger } ~init ~f =
+    { timed_value = ontv timed_value ~init ~f; trigger }
 
-  let last   b ~init   = on b ~init ~f:(fun _ x -> x)
-  let toggle b ~init   = on b ~init ~f:(fun i _ -> not i)
-  let count  ?(init=0) = on ~init ~f:(fun i _ -> i + 1)
+  let last   tv ~init   = on tv ~init ~f:(fun _ x -> x)
+  let toggle tv ~init   = on tv ~init ~f:(fun i _ -> not i)
+  let count  ?(init=0)  = on ~init ~f:(fun i _ -> i + 1)
 
-  let rec uponb ?init (B fa) (B fb) =
+  let rec uponb ?init (TV fa) (TV fb) =
     let f t =
-      let (a, ba) = fa t in
-      let (b, bb) = fb t in
+      let (a, tva) = fa t in
+      let (b, tvb) = fb t in
       match a with
-      | Some _ -> (b, uponb ~init:b ba bb)
+      | Some _ -> (b, uponb ~init:b tva tvb)
       | None   ->
          let value = match init with
            | Some x -> x
            | None   -> b
-         in (value, uponb ~init:value ba bb)
-    in B f
+         in (value, uponb ~init:value tva tvb)
+    in TV f
 
-  let upon ?init { behaviour; trigger } { behaviour = behaviour' } =
-    { behaviour = uponb ?init behaviour behaviour';  trigger }
+  let upon ?init { timed_value } { timed_value = timed_value' } =
+    { timed_value = uponb ?init timed_value timed_value'
+    ; trigger = void_trigger
+    }
 
-  let rec foldb f init (B fa) =
+  let rec foldtv f init (TV fa) =
     let f' t =
-      let (a, ba) = fa t     in
-      let init'   = f init a in
-      (init', foldb f init' ba)
-    in B f'
+      let (a, tva) = fa t     in
+      let init'    = f init a in
+      (init', foldtv f init' tva)
+    in TV f'
 
-  let fold f init { behaviour } =
-    { behaviour = foldb f init behaviour; trigger = None }
+  let fold { timed_value; trigger } ~f ~init =
+    { timed_value = foldtv f init timed_value; trigger }
 end
 
-module Behaviour = struct
-  module Base = Behaviour_base
+module Signal = struct
+  module Base = Signal_base
   include Base
   include Monad.MakeNoInfix(Base)
   module Infix = Monad.Make(Base)
 end
 
-module Behavior = Behaviour
-
 module type Network_base_S = sig
   type 'a t
-  type ('a, 'b) secondary_t = 'a t
+  type ('x, 'a) secondary_t = 'a t
   type manager
 
   val noop_manager : manager
@@ -247,15 +250,15 @@ module type Network_base_S = sig
   val apply : ('a -> 'b) t -> 'a t -> 'b t
   val join : 'a t t -> 'a t
 
-  val perform_state_post : ?finally:('c -> unit) -> ('a, 'b) Behaviour.t
-                           -> init:'c -> f:('c -> 'a -> 'c * (unit -> unit))
+  val perform_state_post : ?finally:('a -> unit) -> ('b, 'c) Signal.t
+                           -> init:'a -> f:('a -> 'c -> 'a * (unit -> unit))
                            -> unit t
-  val perform_state : ?finally:('c -> unit) -> ('a, 'b) Behaviour.t -> init:'c
-                      -> f:('c -> 'a -> 'c) -> unit t
-  val perform : ('a, 'b) Behaviour.t -> f:('a -> unit) -> unit t
-  val react : ('a option, 'b) Behaviour.t -> ('c, 'd) Behaviour.t
-              -> f:('a -> 'c -> unit) -> unit t
-  val react_ : ('a option, 'b) Behaviour.t -> f:('a -> unit) -> unit t
+  val perform_state : ?finally:('a -> unit) -> ('b, 'c) Signal.t -> init:'a
+                      -> f:('a -> 'c -> 'a) -> unit t
+  val perform : ('a, 'b) Signal.t -> f:('b -> unit) -> unit t
+  val react : ('a, 'b option) Signal.t -> ('c, 'd) Signal.t
+              -> f:('b -> 'd -> unit) -> unit t
+  val react_ : ('a, 'b option) Signal.t -> f:('b -> unit) -> unit t
 
   val initially : (unit -> unit) -> unit t
   val finally : (unit -> unit) -> unit t
@@ -276,7 +279,7 @@ module Network_base : Network_base_S = struct
     ; finaliser   : unit -> unit
     }
 
-  type ('a, 'b) secondary_t = 'a t
+  type ('x, 'a) secondary_t = 'a t
 
   type manager =
     { flush : time -> unit
@@ -284,7 +287,6 @@ module Network_base : Network_base_S = struct
     }
 
   let noop_manager = { flush = (fun _ -> ()); stop = (fun _ -> ()) }
-
   (* helper for start *)
   let rec connect acc signal = function
     | [] -> acc
@@ -360,19 +362,18 @@ module Network_base : Network_base_S = struct
   let finally   f = { empty with finaliser   = f }
 
   let finally' = finally
-  let perform_state_post ?(finally=fun _ -> ()) { Behaviour.behaviour }
-                         ~init ~f =
-    let bref     = ref behaviour in
-    let stateref = ref init      in
-    let s t =
-      let (x, b') = Behaviour.at !bref t in
+  let perform_state_post ?(finally=fun _ -> ()) s ~init ~f =
+    let sref     = ref s    in
+    let stateref = ref init in
+    let sink t =
+      let (x, s') = Signal.at !sref t in
       let state   = !stateref in
-      bref := b';
+      sref := s';
       let (state', post) = f state x in
       stateref := state'; post ()
     in
     let x = finally' (fun () -> finally (!stateref)) in
-    let y = add_sink s in
+    let y = add_sink sink in
     join (map x ~f:(fun () -> y))
 
   let perform_state ?finally b ~init ~f =
@@ -381,7 +382,7 @@ module Network_base : Network_base_S = struct
   let perform b ~f = perform_state ~init:() b ~f:(fun () x -> f x; ())
 
   let react e b ~f =
-    perform (Behaviour.apply (Behaviour.map ~f:(fun x y -> (x, y)) b) e)
+    perform (Signal.apply (Signal.map ~f:(fun x y -> (x, y)) b) e)
             (fun (bval, eval_opt) -> match eval_opt with
                                      | None -> ()
                                      | Some eval -> f eval bval)
@@ -395,36 +396,36 @@ end
 module type Network_extra_S = sig
   type 'a t
   val event : ?connect:(('a -> unit) -> (unit -> unit)) -> unit
-              -> 'a Behaviour.event t
+              -> 'a Signal.event t
 end
 
 module Network_extra (M : sig
                         type 'a t
-                        type ('a, 'b) secondary_t = 'a t
+                        type ('x, 'a) secondary_t = 'a t
                         include Monad.NoInfix
                                 with type ('a, 'b) t := ('a, 'b) secondary_t
                         val add_funnel :
                           ((time -> unit) -> unit -> unit) -> unit t
                       end) = struct
   let event ?(connect=fun _ _ -> ()) () =
-    let ({ Behaviour.trigger = trigger_opt } as ev) = Behaviour.event () in
+    let ({ Signal.trigger = trigger } as ev) = Signal.event () in
     let flushref = ref (fun _ -> ()) in
     let connect' flush =
       flushref := flush;
       let add x =
-        match Behaviour.trigger ev x with
+        match Signal.trigger' ev x with
         | None   -> ()
         | Some t -> flush t
       in
       let disconnect = connect add in
       fun () -> flushref := (fun _ -> ()); disconnect ()
     in
-    let trigger_opt' = match trigger_opt with
-      | None         -> None
-      | Some trigger -> Some (fun x -> let t = trigger x in (!flushref) t; t)
+    let trigger' x = match trigger x with
+      | None   -> None
+      | Some t -> (!flushref) t; Some t
     in
     M.bind (M.add_funnel connect')
-           (fun _ -> M.pure { ev with Behaviour.trigger = trigger_opt' })
+           (fun _ -> M.pure { ev with Signal.trigger = trigger' })
 end
 
 module Network = struct

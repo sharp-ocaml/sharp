@@ -1,7 +1,7 @@
 open Sharp_core
 open Sharp_event
 
-open Behaviour
+open Signal
 open Network
 
 type 'a route = string list -> ('a -> unit Network.t) option
@@ -71,7 +71,7 @@ let router ?(base_path="") b routes =
   (last ~init:(fun t  -> ()) <$> event ()) >>= fun flush ->
   (last ~init:(fun () -> ()) <$> event ()) >>= fun stop  ->
 
-  let open Behaviour.Infix in
+  let open Signal.Infix in
   let path = (fun xopt yopt zopt -> match xopt, yopt with
                                     | Some _, _ -> xopt
                                     | _, Some _  -> yopt
@@ -93,8 +93,8 @@ let router ?(base_path="") b routes =
         in let _ = trigger path3 parts in ()
     )
 
-  >> perform (let open Behaviour.Infix in
-              (fun x y -> (x, y)) <$> flush <*> Behaviour.time)
+  >> perform (let open Signal.Infix in
+              (fun x y -> (x, y)) <$> flush <*> Signal.time)
              (fun (flush, t) -> flush t)
   >> perform_state ~finally:(fun f -> f ()) ~init:(fun () -> ()) stop
                    ~f:(fun _ f -> f)
@@ -112,9 +112,9 @@ let router ?(base_path="") b routes =
                 ()
             )
 
-  >> Network.return path
+  >> Network.return (combine path3 path)
 
-let router_ ?base_path = router ?base_path (Behaviour.pure ())
+let router_ ?base_path = router ?base_path (Signal.pure ())
 
 module type Part = sig
   type t

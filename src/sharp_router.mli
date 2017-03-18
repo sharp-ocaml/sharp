@@ -2,11 +2,11 @@ open Sharp_core
 
 type 'a route = string list -> ('a -> unit Network.t) option
 
-val router : ?base_path:string -> ('a, 'b) Behaviour.t -> 'a route list
-             -> string list Behaviour.event Network.t
+val router : ?base_path:string -> ('a, 'b) Signal.t -> 'b route list
+             -> string list Signal.event Network.t
 
 val router_ : ?base_path:string -> unit route list
-              -> string list Behaviour.event Network.t
+              -> string list Signal.event Network.t
 
 module type Part = sig
   type t

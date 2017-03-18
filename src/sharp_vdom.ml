@@ -1,6 +1,6 @@
 open Sharp_core
 
-open Behaviour
+open Signal
 open Network
 
 open Dom
@@ -266,8 +266,8 @@ let diff_and_patch parent vdom vdom' =
      | None -> callback 0.; assert false
 
 let vdom parent b f =
-  let open Behaviour.Infix in
-  let dat = (fun x y -> (x, y)) <$> Behaviour.time <*> b in
+  let open Signal.Infix in
+  let dat = (fun x y -> (x, y)) <$> Signal.time <*> b in
 
   let open Network.Infix in
   let rec g vdom_opt (t, x) =
@@ -286,7 +286,7 @@ let vdom parent b f =
                      )
                      dat
 
-let vdom_ parent f = vdom parent (Behaviour.pure ()) f
+let vdom_ parent f = vdom parent (Signal.pure ()) f
 
 (* Helpers for specific elements *)
 module Element = struct

@@ -40,7 +40,7 @@ val unlink : Linked.t -> (unit -> unit)
 val diff_and_patch : Dom_html.element Js.t -> Linked.t -> t
                      -> Linked.t * (time -> unit)
 
-val vdom : Dom_html.element Js.t -> ('a, 'b) Behaviour.t -> ('a -> t)
+val vdom : Dom_html.element Js.t -> ('a, 'b) Signal.t -> ('b -> t)
            -> unit Network.t
 val vdom_ : Dom_html.element Js.t -> (unit -> t) -> unit Network.t
 

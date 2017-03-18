@@ -1,6 +1,6 @@
 open Js
 
-open Sharp.Core.Behaviour
+open Sharp.Core.Signal
 open Sharp.Core.Network
 open Sharp.Core
 open Sharp.Event
@@ -26,7 +26,7 @@ let network () =
   click ~prevent_default:true add_button >>= fun click_event ->
   event () >>= fun remove_event ->
 
-  let open Behaviour.Infix in
+  let open Signal.Infix in
   let add_command =
     (fun x y -> match x with | None -> None | Some _ -> Some y)
     <$> click_event <*> description
@@ -42,7 +42,7 @@ let network () =
     | None -> is'
     | Some item -> List.filter (fun x -> x != item) is'
   in
-  let items = fold step [] commands in
+  let items = fold ~f:step ~init:[] commands in
 
   vdom data_div items (fun is ->
          tag "ul" |* ("id", "items")

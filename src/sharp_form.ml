@@ -1,7 +1,7 @@
 open Sharp_core
 open Sharp_event
 
-open Behaviour
+open Signal
 open Network
 
 class type field = object
@@ -33,11 +33,13 @@ let get_dom_error el _ =
 
 let with_dom_error f el =
   let open Network.Infix in
-  f el >>= fun bvalue ->
+  f el >>= fun svalue ->
   input get_dom_error el >>= fun error_event ->
   let choose value = function
     | Some error -> Error error
     | None       -> Ok value
   in
-  return (let open Behaviour.Infix in
-          choose <$> bvalue <*> last ~init:None error_event)
+  let open Signal.Infix in
+  let signal  = choose <$> svalue <*> last ~init:None error_event in
+  let signal' = combine svalue signal in
+  Network.return signal'

@@ -2,63 +2,62 @@ open Sharp_category
 
 type time = float
 
-module type Behaviour_base_S = sig
-  type 'a behaviour = B of (time -> 'a * 'a behaviour)
-  type 'a event_trigger = 'a -> time
+module type Signal_base_S = sig
+  type 'a timed_value   = TV of (time -> 'a * 'a timed_value)
+  type 'a event_trigger = 'a -> time option
 
   type ('a, 'b) t =
-    { behaviour : 'a behaviour
-    ; trigger   : 'b event_trigger option
+    { trigger     : 'a event_trigger
+    ; timed_value : 'b timed_value
     }
 
-  type 'a event = ('a option, 'a) t
+  type 'a event = ('a, 'a option) t
 
-  val at : 'a behaviour -> time -> 'a * 'a behaviour
+  val at : ('a, 'b) t  -> time -> 'b * ('a, 'b) t
 
-  val time : (time, 'a) t
+  val time : (void, time) t
 
-  val no_trigger : ('a, 'b) t -> ('a, 'c) t
+  val no_trigger : ('a, 'b) t -> (void, 'b) t
 
-  val map : ('a, 'b) t -> f:('a -> 'c) -> ('c, 'b) t
-  val pure : 'a -> ('a, 'b) t
-  val apply : ('a -> 'b, 'c) t -> ('a, 'd) t -> ('b, 'e) t
-  val join : (('a, 'b) t, 'c) t -> ('a, 'd) t
+  val map : ('a, 'b) t -> f:('b -> 'c) -> ('a, 'c) t
+  val pure : 'a -> (void, 'a) t
+  val apply : ('a, 'b -> 'c) t -> ('d, 'b) t -> (void, 'c) t
+  val join : ('a, ('b, 'c) t) t -> (void, 'c) t
 
-  val contramap : ('a, 'b) t -> f:('c -> 'b) -> ('a, 'c) t
-  val contramap_opt : ('a, 'b) t -> f:('c -> 'b option) -> ('a, 'c) t
+  val contramap : ('a, 'b) t -> f:('c -> 'a) -> ('c, 'b) t
+  val contramap_opt : ('a, 'b) t -> f:('c -> 'a option) -> ('c, 'b) t
 
-  val ( <$?> ) : ('a -> 'b) -> ('a option, 'c) t -> ('b option, 'c) t
+  val ( <$?> ) : ('a -> 'b) -> ('c, 'a option) t -> ('c, 'b option) t
   val ( <*?> ) :
-    (('a -> 'b) option, 'c) t -> ('a option, 'd) t -> ('b option, 'e) t
+    ('a, ('b -> 'c) option) t -> ('d, 'b option) t -> (void, 'c option) t
 
-  val event : unit -> ('a option, 'a) t
-  val trigger : ('a, 'b) t -> 'b -> time option
+  val event : unit -> 'a event
+  val trigger : ('a, 'b) t -> 'a -> unit
+  val trigger' : ('a, 'b) t -> 'a -> time option
 
   val combine : ('a, 'b) t -> ('c, 'd) t -> ('a, 'd) t
 
-  val on : ('a option, 'b) t -> init:'c -> f:('c -> 'a -> 'c) -> ('c, 'b) t
-  val last : ('a option, 'b) t -> init:'a -> ('a, 'b) t
-  val toggle : ('a option, 'b) t -> init:bool -> (bool, 'b) t
-  val count : ?init:int -> ('a option, 'b) t -> (int, 'b) t
-  val upon : ?init:'a -> ('b option, 'c) t -> ('a, 'd) t -> ('a, 'c) t
+  val on : ('a, 'b option) t -> init:'c -> f:('c -> 'b -> 'c) -> ('a, 'c) t
+  val last : ('a, 'b option) t -> init:'b -> ('a, 'b) t
+  val toggle : ('a, 'b option) t -> init:bool -> ('a, bool) t
+  val count : ?init:int -> ('a, 'b option) t -> ('a, int) t
+  val upon : ?init:'a -> ('b, 'c option) t -> ('d, 'a) t -> (void, 'a) t
 
-  val fold : ('a -> 'b -> 'a) -> 'a -> ('b, 'c) t -> ('a, 'd) t
+  val fold : ('c, 'b) t -> f:('a -> 'b -> 'a) -> init:'a -> ('c, 'a) t
 end
 
-module Behaviour : sig
-  module Base : Behaviour_base_S
+module Signal : sig
+  module Base : Signal_base_S
 
-  include Behaviour_base_S
+  include Signal_base_S
   include Monad.NoInfix with type ('a, 'b) t := ('a, 'b) t
 
   module Infix : Monad.S with type ('a, 'b) t := ('a, 'b) t
 end
 
-module Behavior = Behaviour
-
 module type Network_base_S = sig
   type 'a t
-  type ('a, 'b) secondary_t = 'a t
+  type ('x, 'a) secondary_t = 'a t
   type manager
 
   val noop_manager : manager
@@ -75,15 +74,15 @@ module type Network_base_S = sig
   val apply : ('a -> 'b) t -> 'a t -> 'b t
   val join : 'a t t -> 'a t
 
-  val perform_state_post : ?finally:('c -> unit) -> ('a, 'b) Behaviour.t
-                           -> init:'c -> f:('c -> 'a -> 'c * (unit -> unit))
+  val perform_state_post : ?finally:('a -> unit) -> ('b, 'c) Signal.t
+                           -> init:'a -> f:('a -> 'c -> 'a * (unit -> unit))
                            -> unit t
-  val perform_state : ?finally:('c -> unit) -> ('a, 'b) Behaviour.t -> init:'c
-                      -> f:('c -> 'a -> 'c) -> unit t
-  val perform : ('a, 'b) Behaviour.t -> f:('a -> unit) -> unit t
-  val react : ('a option, 'b) Behaviour.t -> ('c, 'd) Behaviour.t
-              -> f:('a -> 'c -> unit) -> unit t
-  val react_ : ('a option, 'b) Behaviour.t -> f:('a -> unit) -> unit t
+  val perform_state : ?finally:('a -> unit) -> ('b, 'c) Signal.t -> init:'a
+                      -> f:('a -> 'c -> 'a) -> unit t
+  val perform : ('a, 'b) Signal.t -> f:('b -> unit) -> unit t
+  val react : ('a, 'b option) Signal.t -> ('c, 'd) Signal.t
+              -> f:('b -> 'd -> unit) -> unit t
+  val react_ : ('a, 'b option) Signal.t -> f:('b -> unit) -> unit t
 
   val initially : (unit -> unit) -> unit t
   val finally : (unit -> unit) -> unit t
@@ -92,7 +91,7 @@ end
 module type Network_extra_S = sig
   type 'a t
   val event : ?connect:(('a -> unit) -> (unit -> unit))
-              -> unit -> 'a Behaviour.event t
+              -> unit -> 'a Signal.event t
 end
 
 module Network : sig
