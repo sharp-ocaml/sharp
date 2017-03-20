@@ -44,15 +44,22 @@ let network () =
   in
   let items = fold ~f:step ~init:[] commands in
 
+  let open Network.Infix in
   vdom data_div items (fun is ->
          tag "ul" |* ("id", "items")
          |+ List.map (fun i ->
-             tag "li"
+             tag ~id:i "li"
              |- text i
              |- (tag ~network:(Sub.click remove_event (fun _ -> i)) "button"
                  |- text "Remove")
            ) is
        )
+
+  >> perform commands (function
+                       | Some x, _ -> print_endline ("Add " ^ x)
+                       | _, Some x -> print_endline ("Delete " ^ x)
+                       | _ -> ()
+                      )
 
 let () =
   let _ = start (network ()) in ()
