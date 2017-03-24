@@ -96,7 +96,7 @@ module Signal_base : Signal_base_S = struct
     let (x, timed_value) = f t in
     (x, { timed_value; trigger })
 
-  let void_trigger Void = None
+  let void_trigger _ = None
 
   let time =
     let rec timed_value = TV (fun t -> (t, timed_value)) in

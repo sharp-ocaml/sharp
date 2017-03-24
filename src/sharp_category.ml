@@ -1,4 +1,4 @@
-type void = Void
+type void = Void of void
 
 module Functor = struct
   module type Base = sig
