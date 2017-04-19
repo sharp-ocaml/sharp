@@ -102,10 +102,9 @@ let create_node name attrs =
              attrs
   in node
 
-let insert_in_real_dom ?current parent node =
-  match current with
-    | None   -> appendChild  parent node
-    | Some n -> replaceChild parent node n
+let insert_in_real_dom ?current parent node = match current with
+  | None   -> appendChild  parent node
+  | Some n -> replaceChild parent node n
 
 let rec link ?current parent vdom = match vdom with
   | Node (name, id, attrs, children, strategy, start) ->
@@ -129,12 +128,14 @@ let rec link ?current parent vdom = match vdom with
      let (flush, stop, callback) = make_callback_functions start node in
      (Linked.Text (str, strategy, (node, flush, stop)), callback)
 
-let rec unlink vdom = match vdom with
+let rec unlink ?(remove=true) vdom = match vdom with
   | Linked.Node (_, _, _, children, _, (node, _, stop)) ->
-     let substops  = List.map unlink children in
+     let substops  = List.map (unlink ~remove) children in
      let substop t = List.iter (fun f -> f t) substops in
-     Js.Opt.iter (node##.parentNode)
-                 (fun parent -> removeChild parent node);
+     if remove
+     then Js.Opt.iter (node##.parentNode)
+                      (fun parent -> removeChild parent node)
+     else ();
      fun t -> substop t; stop ()
   | Linked.Text (_, _, (_, _, stop)) ->
      fun _ -> stop () (* removeChild fails on texts *)
@@ -177,6 +178,11 @@ let restart_needed strategy strategy' situation =
   | _, OnDeepChange, `OnlyChildrenChanged          -> true
   | OnIdentifierChange i, OnIdentifierChange i', _ -> i != i'
   | _, OnIdentifierChange _, _                     -> true
+
+let extract_linked_node = function
+  | Linked.Node (_, _, _, _, _, (node, _, _)) ->
+     (node : Dom_html.element Js.t :> Dom.node Js.t)
+  | Linked.Text (_, _, (node, _, _)) -> (node : Dom.text Js.t :> Dom.node Js.t)
 
 let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
   match vdom_opt, vdom_opt' with
@@ -253,8 +259,10 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
      (Some linked_node, callback, false)
 
   | Some vdom, Some vdom' ->
-     let callback = unlink vdom in
-     let (vdom'', callback') = link parent vdom' in
+     let callback = unlink ~remove:false vdom in
+     let (vdom'', callback') =
+       link ~current:(extract_linked_node vdom) parent vdom'
+     in
      let callback'' t = callback t; callback' t in
      (Some vdom'', callback'', true)
 

@@ -36,7 +36,7 @@ val link : ?current:Dom.node Js.t -> Dom_html.element Js.t -> t
     This is so that we can use perform_state_post to start the subnetworks after
     the new state has been recorded. *)
 
-val unlink : Linked.t -> (unit -> unit)
+val unlink : ?remove:bool -> Linked.t -> (unit -> unit)
 val diff_and_patch : Dom_html.element Js.t -> Linked.t -> t
                      -> Linked.t * (time -> unit)
 
