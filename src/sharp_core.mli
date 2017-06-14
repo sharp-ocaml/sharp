@@ -14,6 +14,9 @@ val time : time t
 val map : ('a -> 'b) -> 'a t -> 'b t
 val ( <$> ) : ('a -> 'b) -> 'a t -> 'b t
 
+val map_opt : ('a -> 'b) -> 'a option t -> 'b option t
+val ( <$?> ) : ('a -> 'b) -> 'a option t -> 'b option t
+
 val pure : 'a -> 'a t
 val apply : ('a -> 'b) t -> 'a t -> 'b t
 val ( <*> ) : ('a -> 'b) t -> 'a t -> 'b t

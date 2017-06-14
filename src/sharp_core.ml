@@ -65,6 +65,9 @@ let rec map f sx =
 
 let ( <$> ) = map
 
+let map_opt f sx = map (function | None -> None | Some x -> Some (f x)) sx
+let ( <$?> ) = map_opt
+
 let rec apply sf sx =
   let propagateref = ref (fun _ -> ()) in
   let timed_value t =
