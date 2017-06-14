@@ -233,7 +233,7 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
        if restart_needed strategy strategy' `CurrentNodeChanged
        then let start' node = stop (); start node in
             make_callback_functions start' node
-       else (stop, fun _ -> ()) (* FIXME *)
+       else (stop, fun _ -> ())
      in
 
      let linked_node = Linked.Text (str', strategy', (node, stop')) in
@@ -245,7 +245,7 @@ let rec diff_and_patch_opt parent vdom_opt vdom_opt' =
        if restart_needed strategy strategy' `NothingChanged
        then let start' node = stop (); start node in
             make_callback_functions start' node
-       else (stop, fun () -> ()) (* FIXME *)
+       else (stop, fun () -> ())
      in
      let linked_node = Linked.Text (str, strategy, (node, stop')) in
      (Some linked_node, callback, false)

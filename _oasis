@@ -15,7 +15,6 @@ Library sharp
 
   Modules:
     Sharp,
-    Sharp_category,
     Sharp_core,
     Sharp_event,
     Sharp_form,

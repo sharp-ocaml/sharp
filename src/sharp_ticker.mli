@@ -1,4 +1,3 @@
-open Sharp_category
 open Sharp_core
 
 type time_diff = time
