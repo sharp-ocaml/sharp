@@ -1,12 +1,9 @@
 open Sharp_core
 
-type 'a route = string list -> ('a -> unit Network.t) option
+type 'a route = string list -> ('a -> (unit -> unit)) option
 
-val router : ?base_path:string -> ('a, 'b) Signal.t -> 'b route list
-             -> string list Signal.event Network.t
-
-val router_ : ?base_path:string -> unit route list
-              -> string list Signal.event Network.t
+val router : ?base_path:string -> 'a t -> 'a route list -> (unit -> unit)
+val router_ : ?base_path:string -> unit route list -> (unit -> unit)
 
 module type Part = sig
   type t
@@ -25,8 +22,8 @@ end
 module Final : sig
   type t = Empty
 
-  type 'a parse_func     = 'a -> unit Network.t
-  type 'a parse_opt_func = ('a -> unit Network.t) option
+  type 'a parse_func     = 'a -> (unit -> unit)
+  type 'a parse_opt_func = ('a -> (unit -> unit)) option
   type 'a generate_func  = 'a
 
   include Part with type t := t and type 'a parse_func     := 'a parse_func

@@ -1,7 +1,5 @@
 open Js
 
-open Sharp.Core.Signal
-open Sharp.Core.Network
 open Sharp.Core
 open Sharp.Event
 open Sharp.Form
@@ -13,7 +11,7 @@ let get_element selector =
   Opt.get (Dom_html.document##querySelector (Js.string selector))
           (fun () -> raise (Element_not_found selector))
 
-let network () =
+let () =
   let description_field =
     Opt.get (Dom_html.CoerceTo.input (get_element "#description"))
             (fun () -> assert false)
@@ -21,15 +19,15 @@ let network () =
   let add_button = get_element "#add_item" in
   let data_div   = get_element "#data"     in
 
-  let open Network.Infix in
-  text_field description_field >>= fun description ->
-  click ~prevent_default:true add_button >>= fun click_event ->
-  event () >>= fun remove_event ->
+  let (remove_event, trigger_remove) = event () in
+  let (click_event, _) = click ~prevent_default:true add_button in
+  let (description, _) = text_field description_field in
 
-  let open Signal.Infix in
-  let add_command =
-    (fun x y -> match x with | None -> None | Some _ -> Some y)
-    <$> click_event <*> description
+  let add_command = (fun ev descr ->
+      match ev with
+      | None -> None
+      | Some _ -> Some descr
+    ) <$> click_event <*> description
   in
   let commands = (fun x y -> (x, y)) <$> add_command <*> remove_event in
 
@@ -44,22 +42,22 @@ let network () =
   in
   let items = fold ~f:step ~init:[] commands in
 
-  let open Network.Infix in
-  vdom data_div items (fun is ->
-         tag "ul" |* ("id", "items")
-         |+ List.map (fun i ->
-             tag ~id:i "li"
-             |- text i
-             |- (tag ~network:(Sub.click remove_event (fun _ -> i)) "button"
-                 |- text "Remove")
-           ) is
-       )
+  let _ =
+    vdom data_div items (fun is ->
+           tag "ul" |* ("id", "items")
+           |+ List.map (fun i ->
+                  tag ~id:i "li"
+                  |- text i
+                  |- (tag ~network:(Sub.click trigger_remove (fun _ -> i))
+                          "button"
+                      |- text "Remove")
+                ) is
+         )
+  in
 
-  >> perform commands (function
-                       | Some x, _ -> print_endline ("Add " ^ x)
-                       | _, Some x -> print_endline ("Delete " ^ x)
-                       | _ -> ()
-                      )
-
-let () =
-  let _ = start (network ()) in ()
+  perform commands
+          (function
+           | Some x, _ -> print_endline ("Add " ^ x)
+           | _, Some x -> print_endline ("Delete " ^ x)
+           | _ -> ()
+          )

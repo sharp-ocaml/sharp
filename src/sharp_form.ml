@@ -1,9 +1,6 @@
 open Sharp_core
 open Sharp_event
 
-open Signal
-open Network
-
 class type field = object
   inherit Dom_html.element
   method value : Js.js_string Js.t Js.prop
@@ -12,9 +9,8 @@ end
 let get_value el = Js.to_string el##.value
 
 let text_field el =
-  let open Network.Infix in
-  input (fun _ _ -> Some (get_value el)) el >>= fun ev ->
-  return (last ~init:(get_value el) ev)
+  let (signal, stop) = input (fun _ _ -> Some (get_value el)) el in
+  (last ~init:(get_value el) signal, stop)
 
 class type validity =
   object
@@ -32,14 +28,11 @@ let get_dom_error el _ =
   if el'##.validity##.valid then None else Some (el'##.validationMessage)
 
 let with_dom_error f el =
-  let open Network.Infix in
-  f el >>= fun svalue ->
-  input get_dom_error el >>= fun error_event ->
+  let (svalue, stop) = f el in
+  let (error_event, _) = input get_dom_error el in
   let choose value = function
     | Some error -> Error error
     | None       -> Ok value
   in
-  let open Signal.Infix in
-  let signal  = choose <$> svalue <*> last ~init:None error_event in
-  let signal' = combine svalue signal in
-  Network.return signal'
+  let signal = choose <$> svalue <*> last ~init:None error_event in
+  (signal, stop)

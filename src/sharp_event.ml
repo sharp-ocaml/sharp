@@ -1,20 +1,19 @@
 open Sharp_core
 
-let make ?(prevent_default=true) event get_value el =
-  let connect add =
-    let callback el' ev =
-      let _ = (match get_value el' ev with
-               | Some x -> add x
-               | None -> ())
-      in not prevent_default
-    in
-    let listener = Dom_events.listen el event callback in
-    fun () -> Dom_events.stop_listen listener
+let make ?(prevent_default=true) dom_event get_value el =
+  let (ev, trigger) = event () in
+  let callback el' ev =
+    let _ = (match get_value el' ev with
+             | Some x -> trigger x
+             | None -> ())
+    in not prevent_default
   in
-  Network.event ~connect ()
+  let listener = Dom_events.listen el dom_event callback in
+  let stop () = Dom_events.stop_listen listener
+  in (ev, stop)
 
-let make_unit ?prevent_default event el =
-  make ?prevent_default event (fun _ _ -> Some ()) el
+let make_unit ?prevent_default dom_event el =
+  make ?prevent_default dom_event (fun _ _ -> Some ()) el
 
 let click ?prevent_default el =
   make_unit ?prevent_default Dom_html.Event.click el

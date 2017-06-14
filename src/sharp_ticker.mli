@@ -8,10 +8,8 @@ type 'a command =
   | Every  of 'a * time_diff
   | NTimes of 'a * time_diff * int
 
-val tick_manager :
-  'a command list -> ('a command, 'a option) Signal.t Network.t
+val tick_manager : 'a command list
+                   -> 'a option t * ('a command -> unit) * (unit -> unit)
 
-val every : time_diff -> 'a -> (void, 'a option) Signal.t Network.t
-
-val last_for : time_diff -> ('a, 'b option) Signal.t
-               -> ('a, 'b option) Signal.t
+val every : time_diff -> 'a -> 'a option t * (unit -> unit)
+val last_for : time_diff -> 'a option t -> 'a option t

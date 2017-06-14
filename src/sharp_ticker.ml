@@ -51,7 +51,7 @@ let add_to_specs specs spec = sort_specs (spec :: specs)
 let remove_from_specs specs spec =
   List.filter (fun spec' -> spec != spec') specs
 
-let rec plan_next_tick now tidref sref event =
+let rec plan_next_tick now tidref sref trigger =
   match !sref with
   | [] -> ()
   | spec :: _ ->
@@ -64,11 +64,10 @@ let rec plan_next_tick now tidref sref event =
                       | Some spec' -> add_to_specs specs spec'
                     in
                     sref := specs';
-
                     tidref := None;
-                    plan_next_tick (Sys.time ()) tidref sref event;
+                    plan_next_tick (Sys.time ()) tidref sref trigger;
                     let v = extract_value spec in
-                    let _ = Signal.trigger event v in ()
+                    trigger v
                   ) (1000. *. diff)
      in tidref := Some tid
 
@@ -82,34 +81,34 @@ let tick_manager commands =
   let sref   = ref specs in
   let tidref = ref None in
 
-  let open Network.Infix in
-  Network.event () >>= fun tick_event ->
+  let (tick_event, trigger_tick) = event () in
 
   let connect trigger =
-    plan_next_tick (Sys.time ()) tidref sref tick_event;
+    plan_next_tick (Sys.time ()) tidref sref trigger_tick;
     fun () -> interrupt tidref
   in
-  Network.event ~connect () >>= fun command_event ->
+  let (command_event, trigger_command, stop) = connected_event connect in
 
-  Network.react command_event Signal.time (fun cmd t ->
-                  interrupt tidref;
-                  sref := add_to_specs (!sref) (command_to_spec t cmd);
-                  plan_next_tick t tidref sref tick_event
-                )
-  >> return (Signal.combine command_event tick_event)
+  react_with command_event time (fun cmd t ->
+               interrupt tidref;
+               sref := add_to_specs (!sref) (command_to_spec t cmd);
+               plan_next_tick t tidref sref trigger_tick
+             );
+
+  (tick_event, trigger_command, stop)
 
 let every diff value =
-  Network.map ~f:Signal.no_trigger (tick_manager [Every (value, diff)])
+  let (signal, _, stop) = tick_manager [Every (value, diff)] in (signal, stop)
 
-let last_for diff ({ Signal.timed_value; trigger } as s) =
-  let open Signal in
-  let rec f s current now =
-    let (opt, s') = at s now in
-    match opt, current with
-    | None, Some (x, past) when past +. diff >= now ->
-       (Some x, Signal.TV (f s' current))
-    | None, _ -> (None, Signal.TV (f s' None))
-    | Some x, _ -> (Some x, Signal.TV (f s' (Some (x, now))))
-  in
-  let timed_value = TV (f s None) in
-  { s with timed_value }
+let last_for diff signal =
+  let rec mk_signal s current =
+    let propagateref = ref (fun _ -> ()) in
+    let timed_value now =
+      let (opt, s') = at s now in
+      match opt, current with
+      | None, Some (x, past) when past +. diff >= now ->
+         (Some x, mk_signal s' current)
+      | None, _ -> (None, mk_signal s' None)
+      | Some x, _ -> (Some x, mk_signal s' (Some (x, now)))
+    in { timed_value; propagateref }
+  in mk_signal signal None

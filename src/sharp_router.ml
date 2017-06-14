@@ -1,10 +1,7 @@
 open Sharp_core
 open Sharp_event
 
-open Signal
-open Network
-
-type 'a route = string list -> ('a -> unit Network.t) option
+type 'a route = string list -> ('a -> (unit -> unit)) option
 
 let to_chars str =
   let rec go acc i =
@@ -49,7 +46,7 @@ let rec search_routes routes parts = match routes with
      | Some net as res -> res
      | None -> search_routes routes' parts
 
-let router ?(base_path="") b routes =
+let router ?(base_path="") signal routes =
   let get_parts_from_hash () =
     let hash = Dom_html.window##.location##.hash in
     to_parts (Js.to_string hash)
@@ -57,64 +54,57 @@ let router ?(base_path="") b routes =
     to_parts (Js.to_string Dom_html.window##.location##.pathname)
   in
 
-  let open Network.Infix in
-  hashchange ~prevent_default:false
-             (fun _ _ -> Some (get_parts_from_hash ())) >>= fun path1 ->
-  popstate ~prevent_default:false (fun _ ev ->
-             if Js.Unsafe.fun_call
-                  (Js.Unsafe.js_expr "function(s) { return s == null; }")
-                  [|ev##.state|]
-             then None
-             else Some (get_parts_from_path ())
-           ) >>= fun path2 ->
-  event () >>= fun path3 ->
-  (last ~init:(fun t  -> ()) <$> event ()) >>= fun flush ->
-  (last ~init:(fun () -> ()) <$> event ()) >>= fun stop  ->
+  let (path1, detach_path1) =
+    hashchange ~prevent_default:false (fun _ _ -> Some (get_parts_from_hash ()))
+  and (path2, detach_path2) =
+    popstate ~prevent_default:false (fun _ ev ->
+               if Js.Unsafe.fun_call
+                    (Js.Unsafe.js_expr "function(s) { return s == null; }")
+                    [|ev##.state|]
+               then None
+               else Some (get_parts_from_path ())
+             )
+  and (path3,  trigger_path3) = event ()
+  and (stop',  trigger_stop)  = event ()
+  in
 
-  let open Signal.Infix in
+  let stop = last ~init:(fun () -> ()) stop' in
   let path = (fun xopt yopt zopt -> match xopt, yopt with
                                     | Some _, _ -> xopt
                                     | _, Some _  -> yopt
                                     | _ -> zopt)
              <$> path1 <*> path2 <*> path3
-  and dat = (fun x y -> (x, y)) <$> stop <*> b in
+  and dat = (fun x y -> (x, y)) <$> stop <*> signal in
 
-  let open Network.Infix in
-  initially (fun _ ->
-      let hash = Js.to_string Dom_html.window##.location##.hash in
-      let get_parts_from_hash () = to_parts hash in
-      if hash = ""
-      then let _ = trigger path3 (get_parts_from_path ()) in ()
-      else
-        let parts_from_hash = get_parts_from_hash () in
-        let parts = match search_routes routes parts_from_hash with
-          | Some _ -> parts_from_hash
-          | None   -> get_parts_from_path ()
-        in let _ = trigger path3 parts in ()
-    )
+  react_with path dat (fun parts (stop, x) ->
+               match search_routes routes parts with
+               | None -> ()
+               | Some net ->
+                  let str = from_parts parts in
+                  replace_state str (base_path ^ str);
+                  stop ();
+                  trigger_stop (net x)
+             );
 
-  >> perform (let open Signal.Infix in
-              (fun x y -> (x, y)) <$> flush <*> Signal.time)
-             (fun (flush, t) -> flush t)
-  >> perform_state ~finally:(fun f -> f ()) ~init:(fun () -> ()) stop
-                   ~f:(fun _ f -> f)
+  (* Initialisation *)
+  let hash = Js.to_string Dom_html.window##.location##.hash in
+  let get_parts_from_hash () = to_parts hash in
+  let _ =
+    if hash = ""
+    then trigger_path3 (get_parts_from_path ())
+    else
+      let parts_from_hash = get_parts_from_hash () in
+      let parts = match search_routes routes parts_from_hash with
+        | Some _ -> parts_from_hash
+        | None   -> get_parts_from_path ()
+      in trigger_path3 parts
+  in
 
-  >> react path dat (fun parts (stop_, x) ->
-             match search_routes routes parts with
-             | None -> ()
-             | Some net ->
-                let str = from_parts parts in
-                replace_state str (base_path ^ str);
-                stop_ ();
-                let manager = Network.start (net x) in
-                let _ = trigger flush (Network.flush manager) in
-                let _ = trigger stop (fun () -> Network.stop manager) in
-                ()
-            )
+  fun () ->
+  let (f, _) = at stop (Sys.time ()) in
+  detach_path1 (); detach_path2 (); f ()
 
-  >> Network.return (combine path3 path)
-
-let router_ ?base_path = router ?base_path (Signal.pure ())
+let router_ ?base_path = router ?base_path (pure ())
 
 module type Part = sig
   type t
@@ -133,8 +123,8 @@ end
 module Final = struct
   type t = Empty
 
-  type 'a parse_func     = 'a -> unit Network.t
-  type 'a parse_opt_func = ('a -> unit Network.t) option
+  type 'a parse_func     = 'a -> (unit -> unit)
+  type 'a parse_opt_func = ('a -> (unit -> unit)) option
   type 'a generate_func  = 'a
 
   let empty = Empty

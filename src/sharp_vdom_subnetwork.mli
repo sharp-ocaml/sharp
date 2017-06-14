@@ -1,17 +1,15 @@
 open Sharp_core
 
-val click : ?prevent_default:bool -> ('a, 'b) Signal.t
-            -> ((#Dom_html.eventTarget as 'c) Js.t -> 'a) -> 'c Js.t
-            -> unit Network.t
+val click : ?prevent_default:bool -> ('a -> unit)
+            -> ((#Dom_html.eventTarget as 'b) Js.t -> 'a) -> 'b Js.t
+            -> (unit -> unit)
 
-val input : ('a, 'b) Signal.t
-            -> ((#Dom_html.eventTarget as 'c) Js.t -> 'a) -> 'c Js.t
-            -> unit Network.t
+val input : ('a -> unit) -> ((#Dom_html.eventTarget as 'b) Js.t -> 'a)
+            -> 'b Js.t -> (unit -> unit)
 
-val text_field : (string, 'a) Signal.t -> #Sharp_form.field Js.t
-                 -> unit Network.t
+val text_field : (string -> unit) -> #Sharp_form.field Js.t -> (unit -> unit)
 
-val submit : ?prevent_default:bool -> (unit, 'a) Signal.t
-             -> #Dom_html.eventTarget Js.t -> unit Network.t
+val submit : ?prevent_default:bool -> (unit -> unit)
+             -> #Dom_html.eventTarget Js.t -> (unit -> unit)
 
-val none : 'a Js.t -> unit Network.t
+val none : 'a Js.t -> (unit -> unit)

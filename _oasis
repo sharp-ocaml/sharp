@@ -7,7 +7,7 @@ License:          BSD-3-clause
 Plugins:          DevFiles (0.4), META (0.4)
 
 PostBuildCommand:
-  js_of_ocaml main.byte -o demo/main.js
+  js_of_ocaml --pretty main.byte -o demo/main.js
 
 Library sharp
   Path:           src
