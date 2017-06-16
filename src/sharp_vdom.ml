@@ -265,7 +265,7 @@ let diff_and_patch parent vdom vdom' =
      | Some vdom'' -> (vdom'', callback)
      | None -> callback (); assert false
 
-let vdom parent signal f =
+let vdom parent ({ propagateref } as signal) f =
   let stopref = ref (fun () -> ()) in
   let redraw vdom_opt (t, x) =
     let vdom' = f x in
@@ -279,6 +279,7 @@ let vdom parent signal f =
 
   perform_state_post ~init:None ~f:redraw
                      ((fun x y -> (x, y)) <$> time <*> signal);
+  !propagateref (Sys.time ()); (* draw once even though there are no events *)
 
   fun () -> !stopref ()
 
