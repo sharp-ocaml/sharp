@@ -1,12 +1,13 @@
 type time = float
 
-(* Avoid relying on this implementation as much as possible *)
-type 'a t =
-  { timed_value  : time -> 'a * 'a t
-  ; propagateref : (time -> unit) ref
-  }
+type 'a t
 
 val at : 'a t -> time -> 'a * 'a t
+val subscribe : 'a t -> ((unit -> unit) -> time -> unit) -> unit
+
+val make : (time -> 'a * 'a t)
+           -> (((unit -> unit) -> time -> unit) -> unit)
+           -> 'a t
 
 val const : 'a -> 'a t
 val time : time t
@@ -36,10 +37,10 @@ val bind : 'a t -> ('a -> 'b t) -> 'b t
 val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
 val ( >> ) : 'a t -> 'b t -> 'b t
 
-val perform : 'a t -> ('a -> unit) -> unit
-val perform_state : 'a t -> init:'b -> f:('b -> 'a -> 'b) -> unit
+val perform : ?force:bool -> 'a t -> ('a -> unit) -> unit
+val perform_state : ?force:bool -> 'a t -> init:'b -> f:('b -> 'a -> 'b) -> unit
 val perform_state_post :
-  'a t -> init:'b -> f:('b -> 'a -> 'b * (unit -> unit)) -> unit
+  ?force:bool -> 'a t -> init:'b -> f:('b -> 'a -> 'b * (unit -> unit)) -> unit
 
 val react : 'a option t -> ('a -> unit) -> unit
 val react_with : 'a option t -> 'b t -> ('a -> 'b -> unit) -> unit

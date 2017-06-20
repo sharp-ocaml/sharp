@@ -36,32 +36,29 @@ module Event = struct
 end
 
 type 'a t =
-  { timed_value  : time -> 'a * 'a t
-  ; propagateref : (time -> unit) ref
+  { timed_value : time -> 'a * 'a t
+  ; subscribe   : ((unit -> unit) -> time -> unit) -> unit
   }
 
-let at { timed_value } t = timed_value t
+let at { timed_value } = timed_value
+let subscribe { subscribe } = subscribe
+
+let make timed_value subscribe = { timed_value; subscribe }
 
 let mkpure f =
-  let propagateref = ref (fun _ -> ()) in
-  let rec s = { timed_value = (fun t -> f s t); propagateref } in
+  let subscribe _ = () in
+  let rec s = { timed_value = (fun t -> f s t); subscribe } in
   s
-
-let register { propagateref } f =
-  let propagate = !propagateref in
-  propagateref := (fun t -> propagate t; f t)
 
 let const x = mkpure (fun s _ -> (x, s))
 let time = mkpure (fun s t -> (t, s))
 
 let rec map f sx =
-  let propagateref = ref (fun _ -> ()) in
   let timed_value t =
     let (x, sx') = at sx t in
     (f x, map f sx')
   in
-  register sx (fun t -> !propagateref t);
-  { timed_value; propagateref }
+  { timed_value; subscribe = subscribe sx }
 
 let ( <$> ) = map
 
@@ -69,15 +66,13 @@ let map_opt f sx = map (function | None -> None | Some x -> Some (f x)) sx
 let ( <$?> ) = map_opt
 
 let rec apply sf sx =
-  let propagateref = ref (fun _ -> ()) in
   let timed_value t =
     let (f, sf') = at sf t in
     let (x, sx') = at sx t in
     (f x, apply sf' sx')
   in
-  register sf (fun t -> !propagateref t);
-  register sx (fun t -> !propagateref t);
-  { timed_value; propagateref }
+  let subscribe f = subscribe sf f; subscribe sx f in
+  { timed_value; subscribe }
 
 let ( <*> ) = apply
 let pure = const
@@ -93,14 +88,12 @@ let rec sequence = function
   | fx :: fxs -> lift2 (fun x xs -> x :: xs) fx (sequence fxs)
 
 let rec join ssx =
-  let propagateref = ref (fun _ -> ()) in
   let timed_value t =
     let (sx, ssx') = at ssx t in
     let (x, _) = at sx t in
     (x, join ssx')
   in
-  register ssx (fun t -> !propagateref t);
-  { timed_value; propagateref }
+  { timed_value; subscribe = subscribe ssx }
 
 let return = pure
 let bind mx f = join (map f mx)
@@ -108,17 +101,26 @@ let ( >>= ) = bind
 let ( >> ) fx fy = fx >>= fun _ -> fy
 let mapM f xs = sequence (List.map f xs)
 
-let rec perform_state_post sx ~init ~f =
-  register sx (fun t ->
-             let (x, sx') = at sx t in
-             let (init', post) = f init x in
-             perform_state_post sx' ~init:init' ~f;
-             post ()
-           )
+let rec perform_state_post ?(force=false) sx ~init ~f =
+  let unsubscriberef = ref (fun () -> ()) in
+  let action t =
+    !unsubscriberef ();
+    let (x, sx') = at sx t in
+    let (init', post) = f init x in
+    perform_state_post sx' ~init:init' ~f;
+    post ()
+  in
+  let callback unsubscribe =
+    let old_unsub = !unsubscriberef in
+    unsubscriberef := (fun () -> old_unsub (); unsubscribe ());
+    action
+  in
+  if force then callback (fun _ -> ()) (Sys.time ()) else subscribe sx callback
 
-let perform_state sx ~init ~f =
-  perform_state_post sx ~init ~f:(fun x y -> (f x y, (fun () -> ())))
-let perform sx f = perform_state sx ~init:() ~f:(fun () x -> f x; ())
+let perform_state ?force sx ~init ~f =
+  perform_state_post ?force sx ~init ~f:(fun x y -> (f x y, (fun () -> ())))
+let perform ?force sx f =
+  perform_state ?force sx ~init:() ~f:(fun () x -> f x; ())
 
 let react sx f = perform sx (function | None -> () | Some x -> f x)
 let react_with sx sy f =
@@ -129,7 +131,6 @@ let react_with sx sy f =
   in react sxy (fun (x, y) -> f x y)
 
 let rec on sx ~init ~f =
-  let propagateref = ref (fun _ -> ()) in
   let timed_value t =
     let (xopt, sx') = at sx t in
     let x' = match xopt with
@@ -138,15 +139,13 @@ let rec on sx ~init ~f =
     in
     (x', on sx' ~init:x' ~f)
   in
-  register sx (fun t -> !propagateref t);
-  { timed_value; propagateref }
+  { timed_value; subscribe = subscribe sx }
 
 let last sx = on sx ~f:(fun _ x -> x)
 let toggle sx = on sx ~f:(fun x _ -> not x)
 let count ?(init=0) sx = on sx ~init ~f:(fun x _ -> x + 1)
 
 let rec upon ?init ev sx =
-  let propagateref = ref (fun _ -> ()) in
   let timed_value t =
     let (opt, ev') = at ev t in
     let (x, sx') = at sx t in
@@ -158,18 +157,15 @@ let rec upon ?init ev sx =
          | None   -> x
        in (value, upon ~init:value ev' sx')
   in
-  register sx (fun t -> !propagateref t);
-  { timed_value; propagateref }
+  { timed_value; subscribe = subscribe sx }
 
 let rec fold sx ~init ~f =
-  let propagateref = ref (fun _ -> ()) in
   let timed_value t =
     let (x, sx') = at sx t in
     let y = f init x in
     (y, fold sx' ~init:y ~f)
   in
-  register sx (fun t -> !propagateref t);
-  { timed_value; propagateref }
+  { timed_value; subscribe = subscribe sx }
 
 let event () =
   let module E = Event in
@@ -186,25 +182,24 @@ let event () =
     List.iter (fun (_, f) -> f t) propagates
   in
 
-  let rec mk_signal ev old_ident =
+  let subscribe f =
     let ident = Random.int32 Int32.max_int in
-    let propagateref = ref (fun _ -> ()) in
+    let unsubscribe () =
+      propagatesref := List.remove_assoc ident !propagatesref
+    in
+    propagatesref := !propagatesref @ [(ident, f unsubscribe)]
+  in
+
+  let rec mk_signal ev =
     let timed_value t =
       let x   = E.at    ev t in
       let ev' = E.after ev t in
-      (x, mk_signal ev' (Some ident))
+      (x, mk_signal ev')
     in
-    (* Append this local propagate: after the first event, several signals
-       could be created. We also need to remove the previous signal manually
-       when the event has not been triggered. *)
-    let propagates = match old_ident with
-      | None    -> !propagatesref
-      | Some id -> List.remove_assoc id !propagatesref
-    in
-    propagatesref := propagates @ [(ident, fun t -> !propagateref t)];
-    { timed_value; propagateref }
+    { timed_value; subscribe }
   in
-  let signal = mk_signal ev None in
+
+  let signal = mk_signal ev in
   (signal, trigger)
 
 let connected_event connect =

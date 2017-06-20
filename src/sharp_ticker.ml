@@ -102,7 +102,6 @@ let every diff value =
 
 let last_for diff signal =
   let rec mk_signal s current =
-    let propagateref = ref (fun _ -> ()) in
     let timed_value now =
       let (opt, s') = at s now in
       match opt, current with
@@ -110,5 +109,5 @@ let last_for diff signal =
          (Some x, mk_signal s' current)
       | None, _ -> (None, mk_signal s' None)
       | Some x, _ -> (Some x, mk_signal s' (Some (x, now)))
-    in { timed_value; propagateref }
+    in make timed_value (subscribe s)
   in mk_signal signal None
