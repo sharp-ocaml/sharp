@@ -65,25 +65,24 @@ let router ?(base_path="") signal routes =
                else Some (get_parts_from_path ())
              )
   and (path3,  trigger_path3) = event ()
-  and (stop',  trigger_stop)  = event ()
   in
 
-  let stop = last ~init:(fun () -> ()) stop' in
   let path = (fun xopt yopt zopt -> match xopt, yopt with
                                     | Some _, _ -> xopt
                                     | _, Some _  -> yopt
                                     | _ -> zopt)
              <$> path1 <*> path2 <*> path3
-  and dat = (fun x y -> (x, y)) <$> stop <*> signal in
+  in
 
-  react_with path dat (fun parts (stop, x) ->
+  let stopref = ref (fun () -> ()) in
+  react_with path signal (fun parts x ->
                match search_routes routes parts with
                | None -> ()
                | Some net ->
                   let str = from_parts parts in
                   replace_state str (base_path ^ str);
-                  stop ();
-                  trigger_stop (net x)
+                  !stopref ();
+                  stopref := net x
              );
 
   (* Initialisation *)
@@ -101,8 +100,7 @@ let router ?(base_path="") signal routes =
   in
 
   fun () ->
-  let (f, _) = at stop (Sys.time ()) in
-  detach_path1 (); detach_path2 (); f ()
+  detach_path1 (); detach_path2 (); !stopref ()
 
 let router_ ?base_path = router ?base_path (pure ())
 
