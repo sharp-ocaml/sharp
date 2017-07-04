@@ -37,17 +37,20 @@ end
 
 type 'a t =
   { timed_value : time -> 'a * 'a t
-  ; subscribe   : ((unit -> unit) -> time -> unit) -> unit
+  ; subscribe   : ((unit -> unit) -> (time -> (unit -> unit))) -> unit
+  ; lock        : unit -> (unit -> unit)
   }
 
 let at { timed_value } = timed_value
 let subscribe { subscribe } = subscribe
+let lock { lock } = lock
 
-let make timed_value subscribe = { timed_value; subscribe }
+let make timed_value subscribe lock = { timed_value; subscribe; lock }
 
 let mkpure f =
   let subscribe _ = () in
-  let rec s = { timed_value = (fun t -> f s t); subscribe } in
+  let lock _ _ = () in
+  let rec s = { timed_value = (fun t -> f s t); subscribe; lock } in
   s
 
 let const x = mkpure (fun s _ -> (x, s))
@@ -58,7 +61,7 @@ let rec map f sx =
     let (x, sx') = at sx t in
     (f x, map f sx')
   in
-  { timed_value; subscribe = subscribe sx }
+  { timed_value; subscribe = subscribe sx; lock = lock sx }
 
 let ( <$> ) = map
 
@@ -72,7 +75,12 @@ let rec apply sf sx =
     (f x, apply sf' sx')
   in
   let subscribe f = subscribe sf f; subscribe sx f in
-  { timed_value; subscribe }
+  let lock () =
+    let unlock  = lock sf () in
+    let unlock' = lock sx () in
+    (fun () -> unlock (); unlock' ())
+  in
+  { timed_value; subscribe; lock }
 
 let ( <*> ) = apply
 let pure = const
@@ -93,7 +101,7 @@ let rec join ssx =
     let (x, _) = at sx t in
     (x, join ssx')
   in
-  { timed_value; subscribe = subscribe ssx }
+  { timed_value; subscribe = subscribe ssx; lock = lock ssx }
 
 let return = pure
 let bind mx f = join (map f mx)
@@ -110,12 +118,19 @@ let rec perform_state_post ?(force=false) sx ~init ~f =
     perform_state_post sx' ~init:init' ~f;
     post ()
   in
+  let two_step_action t =
+    let unlock = lock sx () in
+    fun () ->
+    try action t; unlock () with _ -> unlock ()
+  in
   let callback unsubscribe =
     let old_unsub = !unsubscriberef in
     unsubscriberef := (fun () -> old_unsub (); unsubscribe ());
-    action
+    two_step_action
   in
-  if force then callback (fun _ -> ()) (Sys.time ()) else subscribe sx callback
+  if force
+  then callback (fun _ -> ()) (Sys.time ()) ()
+  else subscribe sx callback
 
 let perform_state ?force sx ~init ~f =
   perform_state_post ?force sx ~init ~f:(fun x y -> (f x y, (fun () -> ())))
@@ -139,7 +154,7 @@ let rec on sx ~init ~f =
     in
     (x', on sx' ~init:x' ~f)
   in
-  { timed_value; subscribe = subscribe sx }
+  { timed_value; subscribe = subscribe sx; lock = lock sx }
 
 let last sx = on sx ~f:(fun _ x -> x)
 let toggle sx = on sx ~f:(fun x _ -> not x)
@@ -157,7 +172,7 @@ let rec upon ?init ev sx =
          | None   -> x
        in (value, upon ~init:value ev' sx')
   in
-  { timed_value; subscribe = subscribe sx }
+  { timed_value; subscribe = subscribe sx; lock = lock sx }
 
 let rec fold sx ~init ~f =
   let timed_value t =
@@ -165,21 +180,27 @@ let rec fold sx ~init ~f =
     let y = f init x in
     (y, fold sx' ~init:y ~f)
   in
-  { timed_value; subscribe = subscribe sx }
+  { timed_value; subscribe = subscribe sx; lock = lock sx }
 
 let event () =
   let module E = Event in
   let ev = E.create () in
   let tipref = ref ev in
   let propagatesref = ref [] in
+  let lockref = ref 0 in
 
-  let trigger x =
-    let (t, tip') = E.add !tipref (Sys.time ()) x in
-    tipref := tip';
-    (* Clean up propagate so that new signals can bind to it again *)
-    let propagates = !propagatesref in
-    propagatesref := [];
-    List.iter (fun (_, f) -> f t) propagates
+  let rec trigger x =
+    if !lockref = 0
+    then
+      let (t, tip') = E.add !tipref (Sys.time ()) x in
+      tipref := tip';
+      (* Clean up propagate so that new signals can bind to it again *)
+      let propagates = !propagatesref in
+      propagatesref := [];
+      let second_steps = List.map (fun (_, f) -> f t) propagates in
+      List.iter (fun f -> f ()) second_steps
+    else
+      let _ = Dom_html.setTimeout (fun () -> trigger x) epsilon_float in ()
   in
 
   let subscribe f =
@@ -190,13 +211,18 @@ let event () =
     propagatesref := !propagatesref @ [(ident, f unsubscribe)]
   in
 
+  let lock () =
+    lockref := !lockref + 1;
+    fun () -> lockref := !lockref - 1
+  in
+
   let rec mk_signal ev =
     let timed_value t =
       let x   = E.at    ev t in
       let ev' = E.after ev t in
       (x, mk_signal ev')
     in
-    { timed_value; subscribe }
+    { timed_value; subscribe; lock }
   in
 
   let signal = mk_signal ev in

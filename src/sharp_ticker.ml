@@ -109,5 +109,5 @@ let last_for diff signal =
          (Some x, mk_signal s' current)
       | None, _ -> (None, mk_signal s' None)
       | Some x, _ -> (Some x, mk_signal s' (Some (x, now)))
-    in make timed_value (subscribe s)
+    in make timed_value (subscribe s) (lock s)
   in mk_signal signal None
