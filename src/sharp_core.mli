@@ -3,11 +3,12 @@ type time = float
 type 'a t
 
 val at : 'a t -> time -> 'a * 'a t
-val subscribe : 'a t -> ((unit -> unit) -> (time -> (unit -> unit))) -> unit
+val subscribe : 'a t -> ((unit -> unit) -> (time -> (unit -> exn option)))
+                -> unit
 val lock : 'a t -> unit -> (unit -> unit)
 
 val make : (time -> 'a * 'a t)
-           -> (((unit -> unit) -> (time -> (unit -> unit))) -> unit)
+           -> (((unit -> unit) -> (time -> (unit -> exn option))) -> unit)
            -> (unit -> (unit -> unit))
            -> 'a t
 

@@ -37,7 +37,7 @@ end
 
 type 'a t =
   { timed_value : time -> 'a * 'a t
-  ; subscribe   : ((unit -> unit) -> (time -> (unit -> unit))) -> unit
+  ; subscribe   : ((unit -> unit) -> (time -> (unit -> exn option))) -> unit
   ; lock        : unit -> (unit -> unit)
   }
 
@@ -131,7 +131,7 @@ let rec perform_state_post ?(force=false) sx ~init ~f =
   let two_step_action t =
     let unlock = lock sx () in
     fun () ->
-    try action t; unlock () with _ -> unlock ()
+    try action t; unlock (); None with e -> unlock (); Some e
   in
   let callback unsubscribe =
     let old_unsub = !unsubscriberef in
@@ -139,7 +139,9 @@ let rec perform_state_post ?(force=false) sx ~init ~f =
     two_step_action
   in
   if force
-  then callback (fun _ -> ()) (Sys.time ()) ()
+  then match callback (fun _ -> ()) (Sys.time ()) () with
+       | None -> ()
+       | Some e -> raise e
   else subscribe sx callback
 
 let perform_state ?force sx ~init ~f =
@@ -204,11 +206,19 @@ let event () =
     then
       let (t, tip') = E.add !tipref (Sys.time ()) x in
       tipref := tip';
-      (* Clean up propagate so that new signals can bind to it again *)
+      (* Clean up propagate so that new signals can bind to it again. *)
       let propagates = !propagatesref in
       propagatesref := [];
       let second_steps = List.map (fun (_, f) -> f t) propagates in
-      List.iter (fun f -> f ()) second_steps
+      (* We collect the first exception to reraise it afterwards. *)
+      let exno =
+        List.fold_left
+          (fun exno f -> match exno, f () with
+                         | Some _, _ -> exno
+                         | None, exno' -> exno'
+          ) None second_steps
+      in
+      match exno with | None -> () | Some e -> raise e
     else
       let _ = Dom_html.setTimeout (fun () -> trigger x) epsilon_float in ()
   in
