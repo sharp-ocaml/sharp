@@ -91,6 +91,16 @@ let lift3 f sa sb sc = f <$> sa <*> sb <*> sc
 let lift4 f sa sb sc sd = f <$> sa <*> sb <*> sc <*> sd
 let lift5 f sa sb sc sd se = f <$> sa <*> sb <*> sc <*> sd <*> se
 
+let apply_opt sf sx =
+  (fun fo xo ->
+   match fo, xo with
+   | None, _ -> None
+   | _, None -> None
+   | Some f, Some x -> Some (f x)
+  ) <$> sf <*> sx
+
+let ( <*?> ) = apply_opt
+
 let rec sequence = function
   | [] -> pure []
   | fx :: fxs -> lift2 (fun x xs -> x :: xs) fx (sequence fxs)
