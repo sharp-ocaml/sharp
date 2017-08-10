@@ -1,50 +1,103 @@
+(** An experimental implementation of a VDOM with helpers to link it to
+    signals.
+
+    Say [s1] is a signal of first name and last name, so its type is
+    [(string * string) t], and [container] is a HTML element of type
+    [Dom_html.element Js.t]. You can display a message in this element like
+    this:
+
+    {[
+      let unlink =
+        vdom container s1 (fun (first_name, last_name) ->
+          tag "div" |* ("class", "message")
+          |- text "Hello! You are "
+          |- (tag "em" |- text (first_name ^ " " ^ last_name))
+        )
+      in
+      (* Rest of your program. *)
+      (* Calling unlink causes the VDOM to be destroyed. *)
+    ]}
+ *)
+
 open Sharp_core
 
+(** VDOM type. *)
 type t
-type attributes
+
+(** Run the function with the signal's value every time it "changes" value (see
+    document of [Sharp.Core] for more details on that) and binds the returned
+    VDOM to the given real DOM element. The returned callback can be called to
+    stop reacting to this signal. *)
+val vdom : Dom_html.element Js.t -> 'a Sharp_core.t -> ('a -> t)
+           -> (unit -> unit)
+
+(** When creating a node, a network can be given, the restart strategy
+    determines when this network should be stopped and called again. *)
 type restart_strategy =
   | Never | Always | OnChange | OnDeepChange | OnIdentifierChange of string
 
-module Linked : sig
-  type t
-end
-
+(** Create a VDOM node of the given HTML tag with the given list of children. *)
 val node    : ?network:(Dom_html.element Js.t -> (unit -> unit))
               -> ?strategy:restart_strategy -> ?id:string -> string -> t list
               -> t
+(** [network] is a function called when the actual node is created and whose
+    returned function is called when the node is destroyed.
+    [strategy] is the restart strategy for this node. See [restart_strategy].
+    [id] allows you to identify a node in order to help the VDOM engine to
+    distinguish between nodes.
+ *)
+
+(** Same as [node] but without children. *)
 val element : ?network:(Dom_html.element Js.t -> (unit -> unit))
-              -> ?strategy:restart_strategy-> ?id: string -> string -> t
+              -> ?strategy:restart_strategy-> ?id:string -> string -> t
+
+(** Alias for [element]. *)
 val tag     : ?network:(Dom_html.element Js.t -> (unit -> unit))
-              -> ?strategy:restart_strategy -> ?id: string -> string -> t
+              -> ?strategy:restart_strategy -> ?id:string -> string -> t
+
+(** A text node. *)
 val text    : ?network:(Dom.text Js.t -> (unit -> unit))
               -> ?strategy:restart_strategy -> string -> t
 
+(** Append a child to a node. The first parameter is the parent. *)
 val append_child  : t -> t -> t
+
+(** Prepend a child to a node. The first parameter is the parent. *)
 val prepend_child : t -> t -> t
 
+(** Set an attribute to a node. The first string is the attribute name and the
+    second its value. *)
 val set_attribute : string -> string -> t -> t
+
+(** Remove an attribute from a node. *)
 val clear_attribute : string -> t -> t
 
+(** Alias for [append_child]. *)
 val ( |- ) : t -> t -> t
+
+(** Append several children at once. *)
 val ( |+ ) : t -> t list -> t
+
+(** Alias for [set_attribute] (sort of.) *)
 val ( |* ) : t -> string * string -> t
 
-val link : ?current:Dom.node Js.t -> Dom_html.element Js.t -> t
-           -> Linked.t * (unit -> unit)
+module Linked : sig
+  (** A linked VDOM, i.e. a VDOM value which corresponds to a real DOM node. *)
+  type t
+end
+
 (** Link a VDOM to a node and return a pair with a linked VDOM and a callback to
     start the subnetworks.
     This is so that we can use perform_state_post to start the subnetworks after
     the new state has been recorded. *)
+val link : ?current:Dom.node Js.t -> Dom_html.element Js.t -> t
+           -> Linked.t * (unit -> unit)
 
 val unlink : ?remove:bool -> Linked.t -> (unit -> unit)
 val diff_and_patch : Dom_html.element Js.t -> Linked.t -> t
                      -> Linked.t * (unit -> unit)
 
-val vdom : Dom_html.element Js.t -> 'a Sharp_core.t -> ('a -> t)
-           -> (unit -> unit)
-val vdom_ : Dom_html.element Js.t -> (unit -> t) -> (unit -> unit)
-
-(* Helpers for specific elements *)
+(** Helpers for specific elements *)
 module Element : sig
   val a          : ?strategy:restart_strategy -> ?id:string
                    -> (Dom_html.anchorElement Js.t -> (unit -> unit)) -> t

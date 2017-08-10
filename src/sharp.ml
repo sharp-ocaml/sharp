@@ -1,3 +1,5 @@
+(** Reexports of other modules to have [Sharp.Core], [Sharp.Event], ... *)
+
 module Core  = Sharp_core
 module Event = Sharp_event
 module Form  = Sharp_form

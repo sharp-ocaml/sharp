@@ -283,8 +283,6 @@ let vdom parent signal f =
 
   fun () -> !stopref ()
 
-let vdom_ parent f = vdom parent (pure ()) f
-
 (* Helpers for specific elements *)
 module Element = struct
   let a ?strategy ?id network =

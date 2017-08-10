@@ -1,8 +1,60 @@
+(** A router which reacts to change to the page hash.
+
+    The creation of routes is a bit awkward due to a lack of higher-kinded
+    polymorphism in Ocaml. Paths are either constant strings or variables
+    separated by /'s. It's easier to show how to create routes than trying
+    to explain them directly so here are some examples: (C stands for constant,
+    V for variable and F for final)
+
+    {[
+      (* open Sharp.Router *)
+
+      let network () =
+        (* Remember vdom returns a callback to stop itself. *)
+        vdom container time (fun t -> text ("The time is " ^ string_of_float t))
+      in
+      let route1 = empty (* / *)
+      and route2 = CF.const "hello" empty (* /hello *)
+      and route3 =
+        CVCF.const "users" (VCF.var (CF.const "hello" empty))
+        (* /users/:some_value/hello *)
+      and route4 =
+        CVCF.const "users" ^/ VCF.var ^// CF.const "hello"
+        (* Same as route3 but with convenient operators. You can use ^/ to avoid
+           parentheses everywhere and the latest should be ^// instead. *)
+      in
+      let routes =
+        [ Final.parse route1 network
+        ; CF.parse route2 network
+        ; CVCF.parse route3 (fun path_value () -> network ())
+            (* Here we discard the string matched in the path. *)
+        ]
+      in
+      router_ routes (* This call returns a callback to stop. *)
+    ]}
+
+    Links can now point to, say, [#/hello]. The router will stop the current
+    network and start the new one. It will also replaces the path from
+    [/whatever/it/was#/hello] to [/hello]. When started the router also looks at
+    the current hash and path (in that order of priority) and checks if it needs
+    to start some network. For example, if the path is [/hello] when the router
+    is started (typically when the page is loaded), it will start the
+    corresponding network. If it is [/hello#/], it will start the network
+    corresponding to [/], not [/hello] and it will replace the path by [/].
+ *)
+
 open Sharp_core
 
+(** A route that can be handled by the router. *)
 type 'a route = string list -> ('a -> (unit -> unit)) option
+(** You probably want to create them using the modules provided here. *)
 
+(** Start listening to changes to the hash. *)
 val router : ?base_path:string -> 'a t -> 'a route list -> (unit -> unit)
+(** When a route matches, the current network is stopped and the network
+    returned by the router is started. *)
+
+(** Same as [router] but without an additional signal value. *)
 val router_ : ?base_path:string -> unit route list -> (unit -> unit)
 
 module type Part = sig
@@ -61,8 +113,13 @@ module Const (Rest : Part) : sig
   val const : string -> Rest.t -> t
 end
 
+(** Same as [Final.empty]. Match the path [/]. *)
 val empty : Final.t
+
+(** See top documentation. *)
 val ( ^/ )  : ('a -> 'b) -> 'a -> 'b
+
+(** See top documentation. *)
 val ( ^// ) : ('a -> 'b) -> (Final.t -> 'a) -> 'b
 
 module CF : module type of Const(Final)

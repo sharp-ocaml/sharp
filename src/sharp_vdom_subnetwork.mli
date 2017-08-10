@@ -1,3 +1,5 @@
+(** Helpers to connect elements of a VDOM. *)
+
 open Sharp_core
 
 val click : ?prevent_default:bool -> ('a -> unit)
